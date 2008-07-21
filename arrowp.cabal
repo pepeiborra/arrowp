@@ -1,0 +1,32 @@
+Name:           arrowp
+Version:        0.5.0.1
+Cabal-Version:  >= 1.2
+Build-Type:     Simple
+License:        GPL
+License-File:   LICENCE
+Author:         Ross Paterson <ross@soi.city.ac.uk>
+Maintainer:     Ross Paterson <ross@soi.city.ac.uk>
+Homepage:       http://www.haskell.org/arrows/
+Category:       Development
+Synopsis:       preprocessor translating arrow notation into Haskell 98
+Description:    A preprocessor that reads Haskell with arrow notation
+                and outputs Haskell 98.  Note that GHC 6.2 or later has
+                built-in support for arrow notation, so if you're only
+                using GHC, you don't need this preprocessor: just rename
+                your arrow module as an ordinary Haskell source file and
+                invoke GHC with the -farrows option.  You'll get better
+                error messages for arrow code, too.
+Extra-Source-Files: README
+
+Flag small_base
+    description: Choose the new smaller, split-up base package.
+
+Executable arrowp
+    Main-is:        Main.lhs
+    Other-Modules:  ArrCode ArrSyn Lexer Parser Parser State Utils
+    if flag(small_base)
+        Build-Depends:  base >= 3, array, containers
+    else
+        Build-Depends:  base < 3
+    Build-Depends:  haskell-src
+    Hs-Source-Dirs: preprocessor

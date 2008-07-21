@@ -1,0 +1,5 @@
+LICENSE
+
+ArrSyn and ArrCode are released under the GNU General Public License.
+The rest is licenced under the BSD-style license of the base package
+in the Haskell hierarchical libraries.

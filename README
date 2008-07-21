@@ -1,0 +1,97 @@
+A prototype preprocessor for arrow notation.
+
+Ross Paterson <ross@soi.city.ac.uk>
+
+Note that recent versions of GHC support this notation directly, and
+give better error messages to boot.
+
+RUNNING THE ARROW PREPROCESSOR
+
+The program supports the following options:
+
+	--pretty=STYLE	pretty print in STYLE
+			[offside|semicolon|inline|none] (default = offside)
+	--help		display usage information
+
+Typically you create a Haskell module using the extended syntax, and
+call it Foo.as (for arrow script).  To convert this into a corresponding
+Haskell module, you say
+
+	arrowp Foo.as >Foo.hs
+or
+	arrowp Foo.as Foo.hs
+
+and then use Foo.hs with your favourite Haskell implementation.
+You can also run it with no arguments at all:
+
+	arrowp <Foo.as >Foo.hs
+
+but then it won't have a file name to put in the error messages.
+Sometimes the input has already been preprocessed, e.g. with unlit
+(from the GHC distribution).  For this situation, you can specify both
+the original file name (for error messages) and the input file name, as
+well as the output file name (which is obligatory in this situation), e.g.
+
+	unlit Foo.las Foo.as
+	arrowp Foo.las Foo.as Foo.hs
+
+or equivalently as
+
+	unlit Foo.las - | arrowp Foo.las - Foo.hs
+
+(both unlit and arrowp allow filename arguments of "-", meaning standard
+input or output as appropriate.)
+
+WARNING: if you give the program 2 (or 3) arguments, the last one will
+be overwritten.
+
+DIAGNOSING ERRORS IN YOUR CODE
+
+Syntax errors will be detected by the preprocessor, and the position in
+the source where they were detected is reported.  (As usual, the actual
+error may occur earlier.)  The preprocessor understands Haskell 98 plus
+multiparameter type classes and the arrow extensions, but not some of
+the other extensions supported by various Haskell implementations.
+The preprocessor doesn't handle operator precedence, so it may copy
+some erroneous expressions like `x == y == z'.  Otherwise, the output
+of the preprocessor should not generate any syntax errors -- if it does,
+please report it.
+
+Semantic errors are more difficult for simple preprocessors like this one.
+They will be detected by your Haskell implementation, whether they occur
+in the Haskell part or the arrows part, and are thus rather hard to
+trace back to the original source.  If you use --pretty=none and feed
+the output to GHC, the error it reports will refer to the first line
+of the declaration containing the error.  But if you need to read the
+preprocessor output to find the problem, omit the --pretty option.
+
+You can reduce the above problems by putting the parts of your program
+that need arrow syntax (and thus the preprocessor) in separate modules.
+
+BUGS
+
+- there is no type checking until the output is compiled,
+  resulting in incomprehensible error messages.
+- failable patterns are not handled as promised yet.
+  (And I'm starting to think they shouldn't be.)
+
+SOURCE NOTES
+
+This is based on hsparser, by Sven Panne, Simon Marlow and Noel Winstanley.
+It is now the haskell-src package distributed with GHC.
+
+My changes are
+
+	Lexer -- a few lines adding extra symbols (all marked)
+	Parser -- a few marked lines and several rules at the end,
+		mostly modified versions of existing rules.
+	ArrSyn, ArrCode, Utils -- new modules for arrow syntax.
+
+The parser gives 2 shift/reduce conflicts, inherited from the original.
+
+There was a reduce/reduce conflict:
+
+	qual -> 'let' declist .
+	qualA -> 'let' declist .
+
+but I've kludged the grammar (see stmtA) to avoid it.
