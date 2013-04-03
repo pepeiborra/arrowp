@@ -5,6 +5,7 @@
 > import System.Environment
 > import System.Exit
 > import System.IO
+> import System.IO.Error
 
 > import Language.Haskell.ParseMonad
 > import Language.Haskell.Syntax
@@ -94,10 +95,10 @@ Available styles: first is default
 >		_       -> usageError "too many arguments\n"
 >	    let mode = defaultParseMode {parseFilename = origName}
 >	    inp <- if inName == "-" then getContents else
->		   readFile inName `catch` \_err ->
+>		   readFile inName `catchIOError` \_err ->
 >			programError ("can't read `" ++ inName ++ "'")
 >	    outH <- if outName == "-" then return stdout else
->		    openFile outName WriteMode `catch` \_err ->
+>		    openFile outName WriteMode `catchIOError` \_err ->
 >			programError ("can't write to `" ++ outName ++ "'")
 >	    outp <- case action of
 >		ParsePretty layout -> case parseModuleWithMode mode inp of
