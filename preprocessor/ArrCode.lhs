@@ -4,8 +4,7 @@
 >	arr, arrLet, (>>>), arrowExp, applyOp, infixOp, (|||), first,
 >	VarDecl(VarDecl), letCmd,
 >	context, anonArgs, toHaskell,
->	components,
->	Tuple,
+>	Tuple(..),
 >	isEmptyTuple, unionTuple, minusTuple, intersectTuple,
 >	patternTuple, expTuple,
 >	returnA_exp, arr_exp, compose_op, choice_op, first_exp,
@@ -234,7 +233,3 @@ Remove all usages of a set of variables.
 > intersectTuple :: Tuple -> Set HsName -> Tuple
 > Tuple t `intersectTuple` vs = Tuple (t `Set.intersection` vs)
 
-The variable components of a pattern.
-
-> components :: HsPat -> Tuple
-> components p = Tuple (freeVars p)

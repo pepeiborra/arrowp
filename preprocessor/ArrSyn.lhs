@@ -104,15 +104,16 @@ Translation state
 
 > data TransState = TransState {
 >	locals :: Set HsName,	-- vars in scope defined in this proc
->	input :: Tuple,		-- input components accessible here
 >	cmdVars :: Map HsName Arrow
 > }
- 
+
+> input :: TransState -> Tuple
+> input s = Tuple (locals s)
+
 > startPattern :: HsPat -> (TransState, HsPat)
 > startPattern p =
 >	(TransState {
 >		locals = freeVars p,
->		input = components p,
 >		cmdVars = Map.empty
 >	 }, p)
 
@@ -124,10 +125,8 @@ Translation state
 
 > instance AddVars HsPat where
 >	addVars s p =
->		(s {
->			locals = locals s `Set.union` freeVars p,
->			input = input s `unionTuple` components p
->		 }, p)
+>		(s {locals = locals s `Set.union` freeVars p}, p)
+
 
 > instance AddVars HsDecl where
 >	addVars s d@(HsFunBind (HsMatch _ n _ _ _:_)) =
