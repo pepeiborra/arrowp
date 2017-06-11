@@ -21,7 +21,7 @@ Extra-Source-Files: README
 Executable arrowp
     Main-is:        Main.lhs
     Other-Modules:  ArrCode ArrSyn Lexer Parser Parser State Utils
-    Build-Depends:  base >= 4.4 && < 5.0, array, containers, haskell-src
+    Build-Depends:  base >= 4.4 && < 5.0, array, containers, haskell-src, transformers
     Hs-Source-Dirs: preprocessor
 
 Source-Repository head
