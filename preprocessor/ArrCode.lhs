@@ -8,7 +8,8 @@
 >	isEmptyTuple, unionTuple, minusTuple, intersectTuple,
 >	patternTuple, expTuple,
 >	returnA_exp, arr_exp, compose_op, choice_op, first_exp,
->	left_exp, right_exp, app_exp, loop_exp
+>	left_exp, right_exp, app_exp, loop_exp,
+>       ifte
 > ) where
 
 > import Utils
@@ -36,6 +37,7 @@
 >	| Op HsExp [Code]		-- combinator applied to arrows
 >	| InfixOp Code HsQOp Code
 >	| Let [VarDecl Code] Code
+>       | Ifte HsExp Code Code
 
 > data Binding = BindLet [HsDecl] | BindCase HsPat HsExp
 
@@ -93,6 +95,13 @@ Arrow constructors
 >	}
 >	where	vs = (freeVars e `Set.union` freeVars ds)
 >				`Set.difference` definedVars ds
+
+> ifte :: HsExp -> Arrow -> Arrow -> Arrow
+> ifte c th el = Arrow
+>             { code = Ifte c (code th) (code el)
+>             , context = context th `unionTuple` context el
+>             , anonArgs = 0
+>             }
 
 > (>>>) :: Arrow -> Arrow -> Arrow
 > a1 >>> a2 = a1 { code = compose (code a1) (code a2) }
@@ -197,6 +206,7 @@ Conversion to Haskell
 >	where	toHaskellDecl (VarDecl loc n a) =
 >			HsPatBind loc (HsPVar n)
 >				(HsUnGuardedRhs (toHaskellCode a)) []
+> toHaskellCode (Ifte cond th el) = HsIf cond (toHaskellCode th) (toHaskellCode el)
 
 > toHaskellArg :: Code -> HsExp
 > toHaskellArg a = parenInfixArg (toHaskellCode a)

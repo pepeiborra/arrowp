@@ -171,7 +171,10 @@ recursion, because that part is independent of the pattern.)
 >	arrLet (anonArgs a) (input s) p decls' e >>> a
 >	where	(s', decls') = addVars s decls
 >		(e, a) = transTrimCmd s' c
-> transCmd s p (If e c1 c2) =
+> transCmd s p (If e c1 c2)
+>   | Set.null (freeVars e `Set.intersection` locals s) =
+>       ifte e (transCmd s p c1) (transCmd s p c2)
+>   | otherwise =
 >	arr 0 (input s) p (HsIf e (left e1) (right e2)) >>> (a1 ||| a2)
 >	where	(e1, a1) = transTrimCmd s c1
 >		(e2, a2) = transTrimCmd s c2
