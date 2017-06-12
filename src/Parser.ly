@@ -15,7 +15,9 @@
 >
 > module Parser (
 >		parseModule, parseModuleWithMode,
->		ParseMode(..), defaultParseMode, ParseResult(..)) where
+>		ParseMode(..), defaultParseMode, ParseResult(..),
+>   parseProc
+>   ) where
 > 
 > import Language.Haskell.Syntax
 > import Language.Haskell.ParseMonad
@@ -134,7 +136,8 @@ Special Ids
 
 > %monad { P }
 > %lexer { lexer } { EOF }
-> %name parse
+> %name parse module
+> %name parseProcExp procExp
 > %tokentype { Token }
 > %%
 
@@ -546,7 +549,10 @@ the exp0 productions to distinguish these from the others (exp0a).
 >	: '\\' srcloc apats '->' exp	{ HsLambda $2 (reverse $3) $5 }
 >  	| 'let' decllist 'in' exp	{ HsLet $2 $4 }
 >	| 'if' exp 'then' exp 'else' exp { HsIf $2 $4 $6 }
->	| 'proc' apat '->' cmd		{ ArrSyn.translate $2 $4 }
+>	| procExp { $1 }
+
+> procExp :: { HsExp }
+> : 'proc' apat '->' cmd		{ ArrSyn.translate $2 $4 }
 
 > exp10b :: { HsExp }
 >	: 'case' exp 'of' altslist	{ HsCase $2 $4 }
@@ -985,4 +991,7 @@ Miscellaneous (mostly renamings)
 > -- | Parse of a string, which should contain a complete Haskell 98 module.
 > parseModuleWithMode :: ParseMode -> String -> ParseResult HsModule
 > parseModuleWithMode mode = runParserWithMode mode parse
+>
+> parseProc :: String -> ParseResult HsExp
+> parseProc = runParser parseProcExp
 > }

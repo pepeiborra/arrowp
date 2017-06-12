@@ -1,5 +1,6 @@
 > module Main (main) where
 
+> import Control.Arrow.QuasiQuoter
 > import Data.List
 > import System.Console.GetOpt
 > import System.Environment
@@ -10,8 +11,6 @@
 > import Language.Haskell.ParseMonad
 > import Language.Haskell.Syntax
 > import Language.Haskell.Pretty
-
-> import Parser
 
 > data Flag = ParsePretty PPLayout   -- pretty print in this style
 >           | Help                   -- give short usage info
