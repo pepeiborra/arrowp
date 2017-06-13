@@ -85,7 +85,7 @@ instance Translate HsExp Exp where
 instance Translate HsDecl Dec where
   tr (HsFunBind mm@(HsMatch _ n _ _ _ : _)) = FunD <$> (mkName <$> tr n) <*> trAll mm
   tr (HsPatBind _ p r dd) = ValD <$> tr p <*> tr r <*> trAll dd
-  tr _ = error "not implemented"
+  tr _ = error "not implemented: HsDecl"
 
 instance Translate HsMatch Clause where
   tr (HsMatch _ _ pats rhs decls) = Clause <$> trAll pats <*> tr rhs <*> trAll decls
@@ -141,8 +141,8 @@ instance Translate HsPat Pat where
   tr (HsPRec n pats) = RecP <$> tr n <*> trAll pats
   tr  HsPWildCard    = return WildP
   tr (HsPIrrPat pat) = TildeP <$> tr pat
-  tr HsPNeg{} = error "not implemented"
-  tr HsPAsPat{} = error "not implemented"
+  tr HsPNeg{} = error "not implemented: HsPNeg"
+  tr HsPAsPat{} = error "not implemented: HsPAsPat"
 
 instance Translate HsPatField FieldPat where
   tr (HsPFieldPat n pat) = (,) <$> tr n <*> tr pat
@@ -157,7 +157,7 @@ instance Translate HsQName Name where
   tr (Qual (Module m) n) = do
     n <- tr n
     fromMaybe (error $ printf "Not found: %s.%s" m n) <$> lookupValueName (m ++ "." ++ n)
-  tr Special{} = error "not implemented"
+  tr Special{} = error "not implemented: Special"
 
 instance Translate HsName [Char] where
   tr (HsSymbol s) = return s
