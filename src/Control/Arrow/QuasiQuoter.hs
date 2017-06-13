@@ -150,10 +150,7 @@ instance Translate HsPatField FieldPat where
 instance Translate HsQName Name where
   tr (UnQual n) = do
     n <- tr n
-    mb_n <- lookupValueName n
-    case mb_n of
-      Just n  -> return n
-      Nothing -> return $ mkName n
+    return $ mkName n
   tr (Qual (Module m) n) = do
     n <- tr n
     fromMaybe (error $ printf "Not found: %s.%s" m n) <$> lookupValueName (m ++ "." ++ n)
