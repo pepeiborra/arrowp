@@ -2,6 +2,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Control.Arrow.QuasiQuoter
   ( proc
   , parseModuleWithMode
@@ -54,6 +55,12 @@ trAll xx = traverse tr xx
 
 instance Translate HsExp Exp where
   tr (HsVar name) = VarE <$> tr name
+  tr (HsCon (Special HsUnitCon)) = [|()|]
+  tr (HsCon (Special HsListCon)) = [|[]|]
+  tr (HsCon (Special HsCons)) = [| (:) |]
+  tr (HsCon (Special (HsTupleCon 2))) = [| (,) |]
+  tr (HsCon (Special (HsTupleCon 3))) = [| (,,) |]
+  tr (HsCon (Special (HsTupleCon 4))) = [| (,,,) |]
   tr (HsCon name) = ConE <$> tr name
   tr (HsLit lit)  = LitE <$> tr lit
   tr (HsInfixApp a op b) =
@@ -154,7 +161,12 @@ instance Translate HsQName Name where
   tr (Qual (Module m) n) = do
     n <- tr n
     fromMaybe (error $ printf "Not found: %s.%s" m n) <$> lookupValueName (m ++ "." ++ n)
-  tr Special{} = error "not implemented: Special"
+  tr (Special (HsTupleCon 2)) = error "unhandled Special tuplecon id"
+  tr (Special HsUnitCon) =  error "unhandled special unitcon id"
+  tr (Special HsListCon) = error "unhandled special listcon id"
+  tr (Special HsFunCon) = error "unhandled special funcon id"
+  tr (Special HsCons) = error "unhandled special cons id"
+
 
 instance Translate HsName [Char] where
   tr (HsSymbol s) = return s
