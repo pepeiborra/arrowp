@@ -2,7 +2,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS -Wincomplete-patterns #-}
 module Control.Arrow.QuasiQuoter
   ( proc
   , parseModuleWithMode
@@ -86,6 +85,7 @@ instance Translate HsExp Exp where
 instance Translate HsDecl Dec where
   tr (HsFunBind mm@(HsMatch _ n _ _ _ : _)) = FunD <$> (mkName <$> tr n) <*> trAll mm
   tr (HsPatBind _ p r dd) = ValD <$> tr p <*> tr r <*> trAll dd
+  tr _ = error "not implemented"
 
 instance Translate HsMatch Clause where
   tr (HsMatch _ _ pats rhs decls) = Clause <$> trAll pats <*> tr rhs <*> trAll decls
@@ -115,7 +115,7 @@ instance Translate HsRhs Body where
 instance Translate HsGuardedRhs (Guard,Exp) where
   tr (HsGuardedRhs _ e e') = (,) . NormalG <$> tr e <*> tr e'
 
-instance Translate (HsLiteral) Lit where
+instance Translate HsLiteral Lit where
   tr (HsChar c) = pure $ CharL c
   tr (HsString s) = pure $ StringL s
   tr (HsInt i) = pure $ IntPrimL i
@@ -141,6 +141,8 @@ instance Translate HsPat Pat where
   tr (HsPRec n pats) = RecP <$> tr n <*> trAll pats
   tr  HsPWildCard    = return WildP
   tr (HsPIrrPat pat) = TildeP <$> tr pat
+  tr HsPNeg{} = error "not implemented"
+  tr HsPAsPat{} = error "not implemented"
 
 instance Translate HsPatField FieldPat where
   tr (HsPFieldPat n pat) = (,) <$> tr n <*> tr pat
@@ -155,6 +157,7 @@ instance Translate HsQName Name where
   tr (Qual (Module m) n) = do
     n <- tr n
     fromMaybe (error $ printf "Not found: %s.%s" m n) <$> lookupValueName (m ++ "." ++ n)
+  tr Special{} = error "not implemented"
 
 instance Translate HsName [Char] where
   tr (HsSymbol s) = return s
