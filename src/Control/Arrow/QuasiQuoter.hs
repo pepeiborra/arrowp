@@ -43,8 +43,8 @@ quote inp =
     ParseFailed loc err -> do
       Loc{..} <- location
       error $ printf "%s:%d:%d: %s" loc_filename
-                                   (fst loc_start + srcLine loc)
-                                   (snd loc_start + srcColumn loc)
+                                   (fst loc_start + srcLine loc - 1)
+                                   (snd loc_start + srcColumn loc - 1)
                                    err
 
 class Translate hs th | hs -> th where
