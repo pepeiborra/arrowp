@@ -1,11 +1,7 @@
 flags: {}
 extra-package-dbs: []
 packages:
-- '.'
-allow-newer: true
-extra-deps:
-- haskell-src-1.0.2.0
-- syb-0.7
-compiler-check: match-exact
-compiler: ghc-8.2.1
-resolver: ghc-8.2.1
+- .
+resolver: lts-9.0
+ghc-options:
+  "*": -Wall
