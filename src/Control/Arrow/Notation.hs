@@ -21,5 +21,5 @@ translateModule = everywhere (mkT (translateExp :: Exp l -> Exp l))
 translateExp :: (Data l, Ord l) => Exp l -> Exp l
 translateExp (Proc l pat exp) =
       let ?l = l
-      in ArrSyn.translate pat (fromHaskell exp)
+      in ArrSyn.translate pat exp
 translateExp other = other

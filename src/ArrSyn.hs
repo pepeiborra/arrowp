@@ -2,8 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module ArrSyn
-  ( fromHaskell
-  , translate
+  ( translate
   ) where
 
 import           ArrCode
@@ -24,42 +23,12 @@ import           Language.Haskell.Exts        (Alt (..), Annotated (..),
 import qualified Language.Haskell.Exts        as H
 import           Language.Haskell.Exts.Pretty
 
-translate :: (Data s, Ord s) => Pat s -> Cmd s -> Exp s
-translate p c = let ?l = ann p in toHaskell (transCmd s p' c)
+translate :: (Data s, Ord s) => Pat s -> Exp s -> Exp s
+translate p c = toHaskell (transCmd s p' c)
       where   (s, p') = startPattern p
 
-data Cmd s
-      = Input (Exp s) (Exp s)
-      | Op (Exp s) [Cmd s]
-      | InfixOp (Cmd s) (QOp s) (Cmd s)
-      | Let (Binds s) (Cmd s)
-      | If (Exp s) (Cmd s) (Cmd s)
-      | Case (Exp s) [Alt s]
-      | Paren (Cmd s)
-      | Do [Stmt s] (Cmd s)
-      | App (Cmd s) (Exp s)
-      | CmdVar (Name s)
-  deriving (Eq,Show)
-
-returnCmd :: (?l::s) => Exp s -> Cmd s
-returnCmd = Input returnA_exp
-
-fromHaskell :: Exp s -> Cmd s
-fromHaskell (H.Do _ stmts)
-  | Qualifier _ exp <- last stmts = Do (init stmts) (fromHaskell exp)
-  | otherwise = error "Do block must be terminated in a command."
-fromHaskell (H.RightArrApp l exp rexp) = fromHaskell $ H.LeftArrApp l exp rexp
-fromHaskell (H.RightArrHighApp l exp rexp) = fromHaskell $ H.LeftArrApp l exp rexp
-fromHaskell (H.LeftArrApp _ exp rexp) = Input exp rexp
-fromHaskell (H.LeftArrHighApp _ exp rexp) = Input exp rexp
-fromHaskell (H.If _ c t e) = If c (fromHaskell t) (fromHaskell e)
-fromHaskell (H.Case _ e alts) = Case e alts
-fromHaskell (H.App _ a b) = App (fromHaskell a) b
-fromHaskell (H.Paren _ e) = Paren (fromHaskell e)
-fromHaskell (H.Let _ bb e) = Let bb (fromHaskell e)
-fromHaskell (H.InfixApp _ a op b) = InfixOp (fromHaskell a) op (fromHaskell b)
-
-fromHaskell e = error $ "fromHaskell: " ++ prettyPrint e
+returnCmd :: (?l::s) => Exp s -> Exp s
+returnCmd = H.LeftArrApp ?l returnA_exp
 
 data TransState s = TransState {
       locals  :: Set (Name s),   -- vars in scope defined in this proc
@@ -114,67 +83,101 @@ instance (Data s, Ord s) => AddVars (Binds s) where
   addVars s (BDecls l decls) = BDecls l <$> addVars s decls
   addVars s it@IPBinds{}     = (s, it)
 
-transCmd :: (?l::s, Ord s, Data s) => TransState s -> Pat s -> Cmd s -> Arrow s
-transCmd s p (Input f e)
+transCmd :: (Ord s, Data s) => TransState s -> Pat s -> Exp s -> Arrow s
+transCmd s p (H.LeftArrApp l f e)
       | Set.null (freeVars f `Set.intersection` locals s) =
-              arr 0 (input s) p e >>> arrowExp f
+              let ?l=l in arr 0 (input s) p e >>> arrowExp f
       | otherwise =
-              arr 0 (input s) p (pair f e) >>> app
-transCmd s p (Op op cs) =
-      applyOp op (map (transCmd s p) cs)
-transCmd s p (InfixOp c1 op c2) =
-      infixOp (transCmd s p c1) op (transCmd s p c2)
-transCmd s p (Let decls c) =
+              let ?l=l in arr 0 (input s) p (pair f e) >>> app
+transCmd s p (H.LeftArrHighApp  l f e) = transCmd s p (H.LeftArrApp l f e)
+transCmd s p (H.RightArrApp     l f e) = transCmd s p (H.LeftArrApp l e f)
+transCmd s p (H.RightArrHighApp l f e) = transCmd s p (H.LeftArrHighApp l e f)
+-- transCmd s p (H.InfixApp l c1 op c2) =
+--   applyOp op (map (transCmd s p) c2)
+transCmd s p (H.InfixApp l c1 op c2) =
+  let ?l=l in infixOp (transCmd s p c1) op (transCmd s p c2)
+transCmd s p (H.Let l decls c) = let ?l=l in
       arrLet (anonArgs a) (input s) p decls' e >>> a
       where   (s', decls') = addVars s decls
-              (e, a) = transTrimCmd s' c
-transCmd s p (If e c1 c2)
+              (e, a) = transTrimCmd l s' c
+transCmd s p (H.If l e c1 c2)
   | Set.null (freeVars e `Set.intersection` locals s) =
       ifte e (transCmd s p c1) (transCmd s p c2)
-  | otherwise =
-      arr 0 (input s) p (H.If ?l e (left e1) (right e2)) >>> (a1 ||| a2)
-      where   (e1, a1) = transTrimCmd s c1
-              (e2, a2) = transTrimCmd s c2
-transCmd s p (Case e as) =
-      transCase s p e as
-transCmd s p (Paren c) =
+  | otherwise = let ?l=l in
+      arr 0 (input s) p (H.If l e (left e1) (right e2)) >>> (a1 ||| a2)
+      where   (e1, a1) = transTrimCmd l s c1
+              (e2, a2) = transTrimCmd l s c2
+transCmd s p (H.Case l e as) =
+  let ?l = l
+  in arr 0 (input s) p (H.Case ?l e as') >>> foldr1 (|||) (reverse cases)
+  where
+    (as', (ncases, cases)) = runState (mapM (transAlt s) as) (0, [])
+    transAlt s (Alt loc p gas decls) = do
+      let (s', p') = addVars s p
+          (s'', decls') = addVars s' decls
+      gas' <- transGuardedRhss s'' gas
+      return (H.Alt loc p' gas' decls')
+    transGuardedRhss s (UnGuardedRhs l c) = do
+      body <- newAlt s c
+      return (H.UnGuardedRhs l body)
+    transGuardedRhss s (GuardedRhss l gas) = do
+      gas' <- mapM (transGuardedRhs s) gas
+      return (H.GuardedRhss l gas')
+    transGuardedRhs s (GuardedRhs loc e c) = do
+      body <- newAlt s c
+      return (H.GuardedRhs loc e body)
+    newAlt s c = do
+      let (e, a) =
+            transTrimCmd l s c
+      (n, as) <- get
+      put (n + 1, a : as)
+      return (label n e)
+    label n e =
+      times
+        n
+        right
+        (if n < ncases - 1
+           then left e
+           else e)
+transCmd s p (H.Paren _ c) =
       transCmd s p c
-transCmd s p (Do ss c) =
-      transDo s p ss c
-transCmd s p (App c arg) =
+transCmd s p (H.Do l ss) =
+      transDo s p (init ss) (let Qualifier _ e = last ss in e)
+transCmd s p (H.App l c arg) =
       anon (-1) $
       arr (anonArgs a) (input s) p (pair e arg) >>> a
-      where   (e, a) = transTrimCmd s c
+      where   (e, a) = transTrimCmd l s c
+transCmd _ _ x = error $ "transCmd: " ++ prettyPrint x
 
-transCmd s p (CmdVar n) =
-      arr (anonArgs a) (input s) p e >>> arrowExp (H.Var ?l (H.UnQual ?l n))
-      where   Just a = Map.lookup n (cmdVars s)
-              e = expTuple (context a)
+-- transCmd s p (CmdVar n) =
+--       arr (anonArgs a) (input s) p e >>> arrowExp (H.Var ?l (H.UnQual ?l n))
+--       where   Just a = Map.lookup n (cmdVars s)
+--               e = expTuple (context a)
 
-transTrimCmd :: (?l::s, Ord s, Data s) => TransState s -> Cmd s -> (Exp s, Arrow s)
-transTrimCmd s c = (expTuple (context a), a)
-      where   a = transCmd s (patternTuple (context a)) c
+
+transTrimCmd :: (Ord s, Data s) => s -> TransState s -> Exp s -> (Exp s, Arrow s)
+transTrimCmd l s c = let ?l=l in (expTuple (context a), a)
+      where   a = let ?l=l in transCmd s (patternTuple (context a)) c
 
 transDo
-  :: forall s.
-     (?l::s, Data s, Ord s)
-  => TransState s -> Pat s -> [Stmt s] -> Cmd s -> Arrow s
+  :: forall s. (Data s, Ord s)
+  => TransState s -> Pat s -> [Stmt s] -> Exp s -> Arrow s
 transDo s p [] c =
       transCmd s p c
 transDo s p (Qualifier l exp : ss) c =
-  let ?l=l in transCmd s p (fromHaskell exp) >>> transDo s p ss c
+  let ?l=l in transCmd s p exp >>> transDo s p ss c
 transDo s p (Generator l pg cg:ss) c = let ?l=l in
       if isEmptyTuple u then
-        transCmd s p (fromHaskell cg) >>> transDo s' pg ss c
+        transCmd s p cg >>> transDo s' pg ss c
       else
         arr 0 (input s) p (pair eg (expTuple u)) >>> first ag u >>> a
       where   (s', pg') = addVars s pg
               a = bind (freeVars pg)
-                      (transDo s' (pairP pg' (patternTuple u)) ss c)
+                      (transDo s' (pairP pg' (let ?l=l in patternTuple u)) ss c)
               u = context a
-              (eg, ag) = transTrimCmd s (fromHaskell cg)
+              (eg, ag) = transTrimCmd l s cg
 transDo s p (LetStmt l decls : ss) c = let ?l=l in
-      transCmd s p (Let decls (Do ss c))
+      transCmd s p (H.Let l decls (H.Do l (ss ++ [Qualifier l c])))
 transDo s p (RecStmt l rss:ss) c = let ?l=l in
   bind
     defined
@@ -189,8 +192,8 @@ transDo s p (RecStmt l rss:ss) c = let ?l=l in
     defined :: Set (Name s)
     defined = foldMap definedVars rss
     (s', rss') = addVars s rss
-    (output, a) = transTrimCmd s' (Do ss c)
-    feedback =
+    (output, a) = transTrimCmd l s' (H.Do l (ss ++ [Qualifier l c]))
+    feedback = let ?l=l in
       context
         (transDo
            s'
@@ -199,32 +202,3 @@ transDo s p (RecStmt l rss:ss) c = let ?l=l in
            (returnCmd
               (foldr (pair . H.Var l . H.UnQual l) output (Set.toList defined)))) `intersectTuple`
       defined
-
-transCase
-  :: (?l :: s, Data s, Ord s)
-  => TransState s -> Pat s -> Exp s -> [Alt s] -> Arrow s
-transCase s p e as = let ?l=ann e in
-      arr 0 (input s) p (H.Case ?l e as') >>> foldr1 (|||) (reverse cases)
-      where   (as', (ncases, cases)) =
-                      runState (mapM (transAlt s) as) (0, [])
-              transAlt s (Alt loc p gas decls) = do
-                      let     (s', p') = addVars s p
-                              (s'', decls') = addVars s' decls
-                      gas' <- transGuardedRhss s'' gas
-                      return (H.Alt loc p' gas' decls')
-              transGuardedRhss s (UnGuardedRhs l c) = do
-                      body <- newAlt s c
-                      return (H.UnGuardedRhs l body)
-              transGuardedRhss s (GuardedRhss l gas) = do
-                      gas' <- mapM (transGuardedRhs s) gas
-                      return (H.GuardedRhss l gas')
-              transGuardedRhs s (GuardedRhs loc e c) = do
-                      body <- newAlt s c
-                      return (H.GuardedRhs loc e body)
-              newAlt s c = do
-                      let (e, a) = transTrimCmd s (fromHaskell c)
-                      (n, as) <- get
-                      put (n+1, a:as)
-                      return (label n e)
-              label n e = times n right
-                              (if n < ncases-1 then left e else e)
