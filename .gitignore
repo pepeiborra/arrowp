@@ -25,3 +25,4 @@ cabal.project.local
 _darcs/
 
 # End of https://www.gitignore.io/api/haskell
+/TAGS
