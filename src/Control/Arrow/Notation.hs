@@ -9,17 +9,18 @@ module Control.Arrow.Notation
   , translateExp
   ) where
 
+import           Control.Monad
 import           Data.Generics
 import           Language.Haskell.Exts as H hiding (Tuple)
 
 import           ArrSyn
 
-translateModule :: forall l. (Data l, Ord l) => Module l -> Module l
-translateModule = everywhere (mkT (translateExp :: Exp l -> Exp l))
+translateModule :: Module () -> Module ()
+translateModule = everywhere (mkT translateExp)
 
 
-translateExp :: (Data l, Ord l) => Exp l -> Exp l
+translateExp :: Exp () -> Exp ()
 translateExp (Proc l pat exp) =
       let ?l = l
       in ArrSyn.translate pat exp
-translateExp other = other
+translateExp other = void other

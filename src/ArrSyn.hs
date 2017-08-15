@@ -1,4 +1,4 @@
-{-# LANGUAGE ImplicitParams      #-}
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module ArrSyn
@@ -8,37 +8,40 @@ module ArrSyn
 import           ArrCode
 import           Utils
 
+import           Control.Monad
 import           Control.Monad.Trans.State
-import           Data.Data
 import           Data.List                    (mapAccumL)
 import           Data.Map                     (Map)
 import qualified Data.Map                     as Map
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
-import           Language.Haskell.Exts        (Alt (..), Annotated (..),
-                                               Binds (..), Decl (..), Exp (),
-                                               GuardedRhs (..), Match (..),
-                                               Name, Pat (..), QOp (..),
+import           Language.Haskell.Exts        (Alt (..), Binds (..), Decl (..),
+                                               Exp (), GuardedRhs (..),
+                                               Match (..), Name, Pat (..),
                                                Rhs (..), Stmt (..))
+
+
+
+
 import qualified Language.Haskell.Exts        as H
 import           Language.Haskell.Exts.Pretty
 
-translate :: (Data s, Ord s) => Pat s -> Exp s -> Exp s
-translate p c = toHaskell (transCmd s p' c)
-      where   (s, p') = startPattern p
+translate :: Pat s -> Exp s -> Exp ()
+translate p c = toHaskell (transCmd s p' (void c))
+      where   (s, p') = startPattern $ void p
 
-returnCmd :: (?l::s) => Exp s -> Exp s
-returnCmd = H.LeftArrApp ?l returnA_exp
+returnCmd :: Exp () -> Exp ()
+returnCmd = H.LeftArrApp () returnA_exp
 
-data TransState s = TransState {
-      locals  :: Set (Name s),   -- vars in scope defined in this proc
-      cmdVars :: Map (Name s) (Arrow s)
+data TransState = TransState {
+      locals  :: Set (Name ()),   -- vars in scope defined in this proc
+      cmdVars :: Map (Name ()) Arrow
 }
 
-input :: TransState s -> Tuple s
+input :: TransState -> Tuple
 input s = Tuple (locals s)
 
-startPattern :: (Data s, Ord s) => Pat s -> (TransState s, Pat s)
+startPattern :: Pat () -> (TransState, Pat ())
 startPattern p =
       (TransState {
               locals = freeVars p,
@@ -46,7 +49,7 @@ startPattern p =
        }, p)
 
 class AddVars a where
-      addVars :: (Data s, Ord s) => TransState s -> a -> (TransState s, a)
+      addVars :: TransState -> a -> (TransState, a)
 
 instance AddVars a => AddVars [a] where
       addVars = mapAccumL addVars
@@ -54,11 +57,11 @@ instance AddVars a => AddVars [a] where
 instance AddVars a => AddVars (Maybe a) where
   addVars = mapAccumL addVars
 
-instance (Data s, Ord s) => AddVars (Pat s) where
+instance AddVars (Pat ()) where
       addVars s p =
               (s {locals = locals s `Set.union` freeVars p}, p)
 
-instance (Data s, Ord s) => AddVars (Decl s) where
+instance AddVars (Decl ()) where
       addVars s d@(FunBind l (Match _ n _ _ _:_)) =
               (s', d)
               where   (s', _) = addVars s (PVar l n)
@@ -67,7 +70,7 @@ instance (Data s, Ord s) => AddVars (Decl s) where
               where   (s', p') = addVars s p
       addVars s d = (s, d)
 
-instance (Data s, Ord s) => AddVars (Stmt s) where
+instance AddVars (Stmt ()) where
       addVars s it@Qualifier{} = (s, it)
       addVars s (Generator loc p c) =
               (s', Generator loc p' c)
@@ -79,37 +82,36 @@ instance (Data s, Ord s) => AddVars (Stmt s) where
               (s', RecStmt l stmts')
               where   (s', stmts') = addVars s stmts
 
-instance (Data s, Ord s) => AddVars (Binds s) where
+instance AddVars (Binds ()) where
   addVars s (BDecls l decls) = BDecls l <$> addVars s decls
   addVars s it@IPBinds{}     = (s, it)
 
-transCmd :: (Ord s, Data s) => TransState s -> Pat s -> Exp s -> Arrow s
-transCmd s p (H.LeftArrApp l f e)
+transCmd :: TransState -> Pat () -> Exp () -> Arrow
+transCmd s p (H.LeftArrApp () f e)
       | Set.null (freeVars f `Set.intersection` locals s) =
-              let ?l=l in arr 0 (input s) p e >>> arrowExp f
+              arr 0 (input s) p e >>> arrowExp f
       | otherwise =
-              let ?l=l in arr 0 (input s) p (pair f e) >>> app
+              arr 0 (input s) p (pair f e) >>> app
 transCmd s p (H.LeftArrHighApp  l f e) = transCmd s p (H.LeftArrApp l f e)
 transCmd s p (H.RightArrApp     l f e) = transCmd s p (H.LeftArrApp l e f)
 transCmd s p (H.RightArrHighApp l f e) = transCmd s p (H.LeftArrHighApp l e f)
 -- transCmd s p (H.InfixApp l c1 op c2) =
 --   applyOp op (map (transCmd s p) c2)
-transCmd s p (H.InfixApp l c1 op c2) =
-  let ?l=l in infixOp (transCmd s p c1) op (transCmd s p c2)
-transCmd s p (H.Let l decls c) = let ?l=l in
+transCmd s p (H.InfixApp () c1 op c2) =
+  infixOp (transCmd s p c1) op (transCmd s p c2)
+transCmd s p (H.Let () decls c) =
       arrLet (anonArgs a) (input s) p decls' e >>> a
       where   (s', decls') = addVars s decls
-              (e, a) = transTrimCmd l s' c
+              (e, a) = transTrimCmd s' c
 transCmd s p (H.If l e c1 c2)
   | Set.null (freeVars e `Set.intersection` locals s) =
       ifte e (transCmd s p c1) (transCmd s p c2)
-  | otherwise = let ?l=l in
+  | otherwise =
       arr 0 (input s) p (H.If l e (left e1) (right e2)) >>> (a1 ||| a2)
-      where   (e1, a1) = transTrimCmd l s c1
-              (e2, a2) = transTrimCmd l s c2
-transCmd s p (H.Case l e as) =
-  let ?l = l
-  in arr 0 (input s) p (H.Case ?l e as') >>> foldr1 (|||) (reverse cases)
+      where   (e1, a1) = transTrimCmd s c1
+              (e2, a2) = transTrimCmd s c2
+transCmd s p (H.Case () e as) =
+   arr 0 (input s) p (H.Case () e as') >>> foldr1 (|||) (reverse cases)
   where
     (as', (ncases, cases)) = runState (mapM (transAlt s) as) (0, [])
     transAlt s (Alt loc p gas decls) = do
@@ -128,7 +130,7 @@ transCmd s p (H.Case l e as) =
       return (H.GuardedRhs loc e body)
     newAlt s c = do
       let (e, a) =
-            transTrimCmd l s c
+            transTrimCmd s c
       (n, as) <- get
       put (n + 1, a : as)
       return (label n e)
@@ -141,44 +143,46 @@ transCmd s p (H.Case l e as) =
            else e)
 transCmd s p (H.Paren _ c) =
       transCmd s p c
-transCmd s p (H.Do l ss) =
+transCmd s p (H.Do () ss) =
       transDo s p (init ss) (let Qualifier _ e = last ss in e)
-transCmd s p (H.App l c arg) =
+transCmd s p (H.App () c arg) =
       anon (-1) $
       arr (anonArgs a) (input s) p (pair e arg) >>> a
-      where   (e, a) = transTrimCmd l s c
-transCmd _ _ x = error $ "transCmd: " ++ prettyPrint x
+      where   (e, a) = transTrimCmd s c
+transCmd s p (H.Lambda () ps c) =
+  anon (length ps) $ bind (freeVars ps) $ transCmd s' (foldl pairP p ps') c
+  where
+    (s', ps') = addVars s ps
+transCmd _ _ x = error $ "transCmd: " ++ show x
 
 -- transCmd s p (CmdVar n) =
---       arr (anonArgs a) (input s) p e >>> arrowExp (H.Var ?l (H.UnQual ?l n))
+--       arr (anonArgs a) (input s) p e >>> arrowExp (H.Var () (H.UnQual () n))
 --       where   Just a = Map.lookup n (cmdVars s)
 --               e = expTuple (context a)
 
 
-transTrimCmd :: (Ord s, Data s) => s -> TransState s -> Exp s -> (Exp s, Arrow s)
-transTrimCmd l s c = let ?l=l in (expTuple (context a), a)
-      where   a = let ?l=l in transCmd s (patternTuple (context a)) c
+transTrimCmd :: TransState -> Exp () -> (Exp (), Arrow)
+transTrimCmd s c = (expTuple (context a), a)
+      where   a = transCmd s (patternTuple (context a)) c
 
-transDo
-  :: forall s. (Data s, Ord s)
-  => TransState s -> Pat s -> [Stmt s] -> Exp s -> Arrow s
+transDo :: TransState -> Pat () -> [Stmt ()] -> Exp () -> Arrow
 transDo s p [] c =
       transCmd s p c
-transDo s p (Qualifier l exp : ss) c =
-  let ?l=l in transCmd s p exp >>> transDo s p ss c
-transDo s p (Generator l pg cg:ss) c = let ?l=l in
+transDo s p (Qualifier () exp : ss) c =
+  transCmd s p exp >>> transDo s p ss c
+transDo s p (Generator () pg cg:ss) c =
       if isEmptyTuple u then
         transCmd s p cg >>> transDo s' pg ss c
       else
         arr 0 (input s) p (pair eg (expTuple u)) >>> first ag u >>> a
       where   (s', pg') = addVars s pg
               a = bind (freeVars pg)
-                      (transDo s' (pairP pg' (let ?l=l in patternTuple u)) ss c)
+                      (transDo s' (pairP pg' (patternTuple u)) ss c)
               u = context a
-              (eg, ag) = transTrimCmd l s cg
-transDo s p (LetStmt l decls : ss) c = let ?l=l in
+              (eg, ag) = transTrimCmd s cg
+transDo s p (LetStmt l decls : ss) c =
       transCmd s p (H.Let l decls (H.Do l (ss ++ [Qualifier l c])))
-transDo s p (RecStmt l rss:ss) c = let ?l=l in
+transDo s p (RecStmt l rss:ss) c =
   bind
     defined
     (loop
@@ -189,11 +193,11 @@ transDo s p (RecStmt l rss:ss) c = let ?l=l in
           (returnCmd (pair output (expTuple feedback)))) >>>
      a)
   where
-    defined :: Set (Name s)
+    defined :: Set (Name ())
     defined = foldMap definedVars rss
     (s', rss') = addVars s rss
-    (output, a) = transTrimCmd l s' (H.Do l (ss ++ [Qualifier l c]))
-    feedback = let ?l=l in
+    (output, a) = transTrimCmd s' (H.Do l (ss ++ [Qualifier l c]))
+    feedback =
       context
         (transDo
            s'

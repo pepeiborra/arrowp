@@ -1,6 +1,3 @@
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE ImplicitParams      #-}
 {-# LANGUAGE OverloadedLists     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
@@ -66,19 +63,19 @@ pair e1 e2 = Tuple (ann e1) Boxed [e1, e2]
 pairP :: (Data s, Ord s) => Pat s -> Pat s -> Pat s
 pairP p1 p2 = PTuple (ann p1) Boxed [hidePat (freeVars p2) p1, p2]
 
-left, right :: Exp s -> Exp s
-left f = let ?l = ann f in App ?l left_exp f
-right f = let ?l = ann f in App ?l right_exp f
+left, right :: Exp ()-> Exp ()
+left = App () left_exp
+right = App () right_exp
 
-compose_op, choice_op :: (?l :: l) => QOp l
-returnA_exp, arr_exp, first_exp :: (?l :: l) => Exp l
-left_exp, right_exp, app_exp, loop_exp :: (?l :: l) => Exp l
-qualArrowId :: (?l::l) => String -> Exp l
-qualArrowId   id = Var ?l $ Qual ?l (ModuleName ?l "Control.Arrow") (Ident ?l id)
-qualArrowSymb :: (?l::l) => String -> QOp l
-qualArrowSymb id = QVarOp ?l $ Qual ?l (ModuleName ?l "Control.Arrow") (Symbol ?l id)
-qualArrowCon :: (?l::l) => String -> Exp l
-qualArrowCon  id = Con ?l $ Qual ?l (ModuleName ?l "Control.Arrow") (Symbol ?l id)
+compose_op, choice_op :: QOp ()
+returnA_exp, arr_exp, first_exp :: Exp ()
+left_exp, right_exp, app_exp, loop_exp :: Exp ()
+qualArrowId :: String -> Exp ()
+qualArrowId   id = Var () $ Qual () (ModuleName () "Control.Arrow") (Ident () id)
+qualArrowSymb :: String -> QOp ()
+qualArrowSymb id = QVarOp () $ Qual () (ModuleName () "Control.Arrow") (Symbol () id)
+qualArrowCon :: String -> Exp ()
+qualArrowCon  id = Con () $ Qual () (ModuleName () "Control.Arrow") (Symbol () id)
 arr_exp       = qualArrowId "arr"
 compose_op    = qualArrowSymb ">>>"
 first_exp     = qualArrowId "first"

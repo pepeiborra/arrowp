@@ -5,6 +5,7 @@ module Control.Arrow.QuasiQuoter
   ) where
 
 import Control.Arrow.Notation
+import Control.Monad
 
 import Language.Haskell.Exts as Exts hiding (Exp, Loc)
 import Language.Haskell.Meta
@@ -37,13 +38,10 @@ quote = quoteEx defaultParseMode { extensions = defaultExtensions }
 quoteEx :: ParseMode -> String -> Q Exp
 quoteEx mode inp =
   case parseExpWithMode mode ("proc " ++ inp) of
-    ParseOk proc -> return $ toExp $ translateExp proc
+    ParseOk proc -> return $ toExp $ translateExp (void proc)
     ParseFailed loc err -> do
       Loc{..} <- location
       error $ printf "%s:%d:%d: %s" loc_filename
                                    (fst loc_start + srcLine loc - 1)
                                    (snd loc_start + srcColumn loc - 1)
                                    err
-
-
-
