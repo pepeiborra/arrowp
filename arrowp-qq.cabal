@@ -18,7 +18,7 @@ Flag Debug
   Manual:              True
 
 Source-Repository head
-    Type: darcs
+    Type: git 
     Location: http://github.com/pepeiborra/arrowp
 
 Library
@@ -52,6 +52,11 @@ executable arrowp-ext
   build-depends:
                 base >= 4.7 && < 5, 
                 arrowp-qq,
-                haskell-src-exts,
-                Hoed
+                haskell-src-exts
+  if flag(Debug)
+      Build-Depends:       Hoed
+      cpp-options:         -DDEBUG
+  else
+      Build-Depends:       NoHoed
+
   default-language: Haskell2010
