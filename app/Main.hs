@@ -1,16 +1,28 @@
-{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import           Control.Arrow.Notation
 import           Control.Monad
+import           Debug.Hoed.Pure
 import           Language.Haskell.Exts
 import           System.Environment
 import           System.Exit
+import           System.IO
 import           Text.Printf
 
+usage :: String -> String
+usage progName = unlines [
+  "usage: " ++ progName ++
+  " [FILENAME] [SOURCE] [DEST]",
+  "Read arrow notation from SOURCE (derived from FILENAME) and write",
+  "standard Haskell to DEST.",
+  "If no FILENAME, use SOURCE as the original name.",
+  "If no DEST or if DEST is `-', write to standard output.",
+  "If no SOURCE or if SOURCE is `-', read standard input."
+  ]
+
 main :: IO ()
-main = do
+main = runO $ do
   args <- getArgs
   let exts =
         [
@@ -28,23 +40,25 @@ main = do
         , EnableExtension ScopedTypeVariables
         , EnableExtension LambdaCase
         ]
-  case args of
-    [] -> interact $ \inp ->
-        case parseModuleWithMode defaultParseMode{extensions=exts} inp of
-          ParseOk x ->
-            prettyPrint (translateModule $ void x) ++ "\n"
-          ParseFailed SrcLoc{..} err ->
-            printf "Parse error at %d:%d: %s\n" srcLine srcColumn err
-    [orig,inpF,outF] ->
-      parseFileWithExts exts inpF >>= \case
+  progName <- getProgName
+  (orig, inp, out) <- case args of
+    ["--help"] -> do
+      putStrLn $ usage progName
+      exitSuccess
+    []     -> return ("input",Nothing,Nothing)
+    [i]    -> return (i, Just i, Nothing)
+    [i,o]  -> return (i, Just i, Just o)
+    [orig,i,o] -> return (orig, Just i, Just o)
+    _ -> do
+      putStrLn $ usage progName
+      error "Unrecognized set of command line arguments"
+  hIn  <- maybe (return stdin)  (`openFile` ReadMode) inp
+  hOut <- maybe (return stdout) (`openFile` WriteMode) out
+  contents <- hGetContents hIn
+  case parseFileContentsWithExts exts contents of
         ParseFailed SrcLoc{..} err -> do
           printf "Parse error at %s:%d:%d: %s" orig srcLine srcColumn err
           exitFailure
         ParseOk x -> do
           let x' = translateModule (void x)
-          writeFile outF $ prettyPrint x'
-
-    _ -> do
-      exe <- getExecutablePath
-      putStrLn "Unrecognized arguments. Usage: "
-      printf "%s <orig path> <input path> <output path>" exe
+          hPutStr hOut $ prettyPrint x'
