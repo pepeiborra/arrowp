@@ -3,6 +3,7 @@ module Main where
 
 import           Control.Arrow.Notation
 import           Control.Monad
+import           Data.List
 import           Debug.Hoed.Pure
 import           Language.Haskell.Exts
 import           System.Environment
@@ -24,22 +25,6 @@ usage progName = unlines [
 main :: IO ()
 main = runO $ do
   args <- getArgs
-  let exts =
-        [
-          EnableExtension Arrows
-        , EnableExtension DatatypeContexts
-        , EnableExtension FlexibleContexts
-        , EnableExtension FlexibleInstances
-        , EnableExtension FunctionalDependencies
-        , EnableExtension GADTs
-        , EnableExtension MultiParamTypeClasses
-        , EnableExtension MultiWayIf
-        , EnableExtension FunctionalDependencies
-        , EnableExtension TypeFamilies
-        , EnableExtension RecordWildCards
-        , EnableExtension ScopedTypeVariables
-        , EnableExtension LambdaCase
-        ]
   progName <- getProgName
   (orig, inp, out) <- case args of
     ["--help"] -> do
@@ -55,10 +40,23 @@ main = runO $ do
   hIn  <- maybe (return stdin)  (`openFile` ReadMode) inp
   hOut <- maybe (return stdout) (`openFile` WriteMode) out
   contents <- hGetContents hIn
-  case parseFileContentsWithExts exts contents of
+  case parseFileContentsWithExts defaultExtensions contents of
         ParseFailed SrcLoc{..} err -> do
           printf "Parse error at %s:%d:%d: %s" orig srcLine srcColumn err
           exitFailure
         ParseOk x -> do
           let x' = translateModule (void x)
           hPutStr hOut $ prettyPrint x'
+
+defaultExtensions :: [Extension]
+defaultExtensions = [e | e@EnableExtension{} <- knownExtensions] \\ map EnableExtension badExtensions
+
+badExtensions :: [KnownExtension]
+badExtensions =
+    [TransformListComp -- steals the group keyword
+    ,XmlSyntax, RegularPatterns -- steals a-b
+    ,UnboxedTuples -- breaks (#) lens operator
+    ,QuasiQuotes -- breaks [x| ...], making whitespace free list comps break
+    ,DoRec, RecursiveDo -- breaks rec
+    ,TypeApplications -- HSE fails on @ patterns
+    ]
