@@ -1,19 +1,9 @@
 flags: {}
 extra-package-dbs: []
 extra-deps:
-- FPretty-1.1
-- RBTree-0.0.5
-- libgraph-1.12
+- NoHoed-0.1.0
 packages:
 - .
-- location: /Users/pepe/code/haskell-src-exts-observe
-  extra-dep: true
-- location: /Users/pepe/code/NoHoed
-  extra-dep: true
-- location: /Users/pepe/scratch/Hoed
-  extra-dep: true
-- location: /Users/pepe/scratch/libgraph
-  extra-dep: true
 
 resolver: lts-9.0
 ghc-options:
