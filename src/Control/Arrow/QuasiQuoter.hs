@@ -6,10 +6,11 @@ module Control.Arrow.QuasiQuoter
 
 import Control.Arrow.Notation
 import Control.Monad
+import Data.List
 
 import Language.Haskell.Exts as Exts hiding (Exp, Loc)
 import Language.Haskell.Meta
-import Language.Haskell.TH
+import Language.Haskell.TH (Exp, Q, Loc(..), location )
 import Language.Haskell.TH.Quote
 
 import Text.Printf
@@ -32,8 +33,6 @@ proc = QuasiQuoter
 
 quote :: String -> Q Exp
 quote = quoteEx defaultParseMode { extensions = defaultExtensions }
-  where
-    defaultExtensions = []
 
 quoteEx :: ParseMode -> String -> Q Exp
 quoteEx mode inp =
@@ -45,3 +44,15 @@ quoteEx mode inp =
                                    (fst loc_start + srcLine loc - 1)
                                    (snd loc_start + srcColumn loc - 1)
                                    err
+defaultExtensions :: [Extension]
+defaultExtensions = [e | e@EnableExtension{} <- knownExtensions] \\ map EnableExtension badExtensions
+
+badExtensions :: [KnownExtension]
+badExtensions =
+    [TransformListComp -- steals the group keyword
+    ,XmlSyntax, RegularPatterns -- steals a-b
+    ,UnboxedTuples -- breaks (#) lens operator
+    ,QuasiQuotes -- breaks [x| ...], making whitespace free list comps break
+    ,DoRec, RecursiveDo -- breaks rec
+    ,TypeApplications -- HSE fails on @ patterns
+    ]
