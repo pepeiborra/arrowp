@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 module ArrCode (
@@ -16,19 +17,26 @@ module ArrCode (
 
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
+import           Debug.Hoed.Pure
 import           Language.Haskell.Exts.Syntax hiding (Let, Tuple)
 import qualified Language.Haskell.Exts.Syntax as H
 import           Utils
 
 data Arrow = Arrow
-  { code     :: Code
-  , context  :: Tuple -- named input components used by the arrow
+  { context  :: Tuple -- named input components used by the arrow
   , anonArgs :: Int -- number of unnamed arguments
+  , code     :: Code
   }
+  deriving (Eq, Generic, Show)
+
+instance Observable Arrow
+
 data VarDecl a = VarDecl (Name ()) a
-      deriving (Eq,Show)
+      deriving (Eq,Generic,Show)
 instance Functor VarDecl where
       fmap f (VarDecl name a) = VarDecl name (f a)
+instance Observable a => Observable (VarDecl a)
+
 data Code
       = ReturnA                       -- returnA = arr id
       | Arr Int (Pat ()) [Binding] (Exp ())   -- arr (first^n (\p -> ... e))
@@ -37,7 +45,12 @@ data Code
       | InfixOp Code (QOp ()) Code
       | Let [VarDecl Code] Code
       | Ifte (Exp ()) Code Code
+  deriving (Eq,Generic, Show)
+instance Observable Code
+
 data Binding = BindLet (Binds ()) | BindCase (Pat ()) (Exp ())
+  deriving (Eq,Generic, Show)
+instance Observable Binding
 
 loop :: Arrow -> Arrow
 loop f = applyOp loop_exp [f]
@@ -135,7 +148,7 @@ compose a1@(Arr n1 p1 ds1 e1) a2@(Arr n2 p2 ds2 e2)
   | same p2 e1 = Arr n1 p1 (ds1 ++ ds2) e2
   | otherwise = Arr n1 p1 (ds1 ++ BindCase p2 e1 : ds2) e2
 compose (Compose f1 as1 g1) (Compose f2 as2 g2) =
-  Compose f1 (as1 ++ (compose g1 f2 : as2)) g2
+  Compose f1 (as1 ++ (g1 : f2 : as2)) g2
 compose a (Compose f bs g) = Compose (compose a f) bs g
 compose (Compose f as g) b = Compose f as (compose g b)
 compose a1 a2 = Compose a1 [] a2
@@ -145,9 +158,9 @@ toHaskell = toHaskellCode . code
   where
     toHaskellCode ReturnA = returnA_exp
     toHaskellCode (Arr n p bs e) =
-      App () arr_exp (times n (Paren () . App () first_exp) body)
+      App () arr_exp (times n (App () first_exp) body)
       where
-        body = Paren () (Lambda () [p] (foldr addBinding e bs))
+        body = (Lambda () [p] (foldr addBinding e bs))
         addBinding (BindLet ds) e = H.Let () ds e
         addBinding (BindCase p e) e' =
           Case () e [Alt () p (UnGuardedRhs () e') Nothing]
@@ -168,6 +181,8 @@ toHaskell = toHaskellCode . code
     toHaskellArg = toHaskellCode
 
 newtype Tuple = Tuple (Set (Name ()))
+  deriving (Eq,Generic,Show)
+instance Observable Tuple
 
 isEmptyTuple :: Tuple -> Bool
 isEmptyTuple (Tuple t) = Set.null t

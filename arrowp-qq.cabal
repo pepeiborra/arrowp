@@ -12,6 +12,11 @@ Synopsis:       A preprocessor and quasiquoter for translating arrow notation
 Description:    A suite of preprocessor and quasiquoter to desugar arrow notation built on top of Ross Paterson's arrowp and the venerable haskell-src-exts.
 Extra-Source-Files: README
 
+Flag Debug
+  Description:         Enabled Hoed algorithmic debugging
+  Default:             False
+  Manual:              True
+
 Source-Repository head
     Type: darcs
     Location: http://github.com/pepeiborra/arrowp
@@ -29,6 +34,11 @@ Library
                    template-haskell < 2.13, 
                    transformers,
                    uniplate
+    if flag(Debug)
+       Build-Depends:       Hoed, haskell-src-exts-observe
+       cpp-options:         -DDEBUG
+    else
+       Build-Depends:       NoHoed
 
     Hs-Source-Dirs: src
     Other-Modules:  ArrCode ArrSyn Utils
@@ -42,5 +52,6 @@ executable arrowp-ext
   build-depends:
                 base >= 4.7 && < 5, 
                 arrowp-qq,
-                haskell-src-exts
+                haskell-src-exts,
+                Hoed
   default-language: Haskell2010
