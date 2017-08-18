@@ -1,8 +1,11 @@
-{-# LANGUAGE CPP               #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedLists   #-}
-{-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE OverloadedLists     #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -Wno-orphans #-}
 module Utils where
 
@@ -21,16 +24,39 @@ import           Language.Haskell.Exts
 import           Language.Haskell.Exts.Observe ()
 #endif
 
-type FreeVarsFun = Maybe(Set (Name ())) -> (Set(Name ()), Maybe(Set(Name())))
-type FreeVars x = x -> FreeVarsFun
+type FreeVarsFun l = Maybe(Set (Name l)) -> (Set(Name l), Maybe(Set(Name l)))
+type FreeVars l x = x -> FreeVarsFun l
 
-freeVars :: (Data a, Observable a, Typeable a) => a -> Set(Name())
+freeVars
+  :: ( Data a
+     , Data l
+     , Observable a
+     , Observable l
+     , Observable (Exp l)
+     , Observable (Set(Name l))
+     , Observable (Pat l)
+     , Observable [Stmt l]
+     , Ord l
+     )
+  => a -> Set (Name l)
 freeVars = observe "freeVars" freeVars'
 
-freeVars' :: (Data a, Typeable a) => a -> Set(Name())
+freeVars'
+  :: forall l a.
+     ( Data a
+     , Observable a
+     , Observable l
+     , Observable (Exp l)
+     , Observable (Pat l)
+     , Observable (Set(Name l))
+     , Observable [Stmt l]
+     , Ord l
+     , Data l
+     )
+  => a -> Set (Name l)
 freeVars' x = everythingWithContext (Just mempty) (<>) collect x
   where
-    collect :: GenericQ FreeVarsFun
+    collect :: GenericQ (FreeVarsFun l)
     collect =
       mkQ (Set.empty, )
        collectExp `extQ`
@@ -42,7 +68,7 @@ freeVars' x = everythingWithContext (Just mempty) (<>) collect x
        collectBound @Decl  `extQ`
        collectBound @Match `extQ`
        collectBound @Binds
-    collectExp :: FreeVars (Exp())
+    collectExp :: FreeVars l (Exp l)
     collectExp _ Nothing = ([], Nothing)
     collectExp (Var _ (UnQual _ n)) (Just bound)
       | not (n `Set.member` bound) = ([n], Just bound)
@@ -59,7 +85,7 @@ freeVars' x = everythingWithContext (Just mempty) (<>) collect x
 
     -- For statement sequences we want a different recursion pattern
     -- The bindings defined by a statement are in scope in the rest of the sequence
-    collectStmts :: FreeVars [Stmt()]
+    collectStmts :: FreeVars l [Stmt l]
     collectStmts stmts (Just bound) =
       (foldr addStmt mempty stmts `Set.difference` bound, Nothing)
     collectStmts _ Nothing = ([], Nothing)
@@ -72,7 +98,7 @@ freeVars' x = everythingWithContext (Just mempty) (<>) collect x
     addStmt (RecStmt _ decls) s =
       (freeVars decls `Set.union` s) `Set.difference` foldMap definedVars decls
 
-    collectQualStmts :: FreeVars [QualStmt()]
+    collectQualStmts :: FreeVars l [QualStmt l]
     collectQualStmts _ Nothing = ([], Nothing)
     collectQualStmts stmts (Just bound) =
       (foldr addQualStmt mempty stmts `Set.difference` bound, Nothing)
@@ -84,17 +110,26 @@ freeVars' x = everythingWithContext (Just mempty) (<>) collect x
     addQualStmt (GroupUsing _ e) s       = freeVars e <> s
     addQualStmt (GroupByUsing _ e1 e2) s = freeVars e1 <> freeVars e2 <> s
 
-    collectBound :: DefinedVars b => FreeVars (b())
+    collectBound :: DefinedVars b => FreeVars l (b l)
     collectBound _ Nothing      = ([], Nothing)
     collectBound d (Just bound) = ([], Just $ definedVars d <> bound)
 
-    collectGRHS :: FreeVars (GuardedRhs())
+    collectGRHS :: FreeVars l (GuardedRhs l)
     collectGRHS _ Nothing = ([], Nothing)
     collectGRHS (GuardedRhs _ stmts _) (Just bound) =
       (freeVars stmts, Just $ bound <> foldMap definedVars stmts)
 
 class DefinedVars a where
-  definedVars :: a () -> Set (Name ())
+  definedVars
+    :: ( Data l
+       , Ord l
+       , Observable l
+       , Observable (Exp l)
+       , Observable (Pat l)
+       , Observable (Set(Name l))
+       , Observable [Stmt l]
+       )
+    => a l -> Set (Name l)
 
 instance DefinedVars Decl where
   definedVars (FunBind _ (Match _ n _ _ _:_)) = Set.singleton n
@@ -150,15 +185,24 @@ hidePat vs = transform (go vs) where
 pair :: Exp s -> Exp s -> Exp s
 pair e1 e2 = Tuple (ann e1) Boxed [e1, e2]
 
-pairP :: Pat () -> Pat () -> Pat ()
+pairP
+  :: ( Data l
+     , Ord l
+     , Observable l
+     , Observable (Pat l)
+     , Observable (Exp l)
+     , Observable (Set(Name l))
+     , Observable [Stmt l]
+     )
+  => Pat l -> Pat l -> Pat l
 pairP p1 p2 = PTuple (ann p1) Boxed [hidePat (freeVars p2) p1, p2]
 
-left, right :: Exp ()-> Exp ()
-left = App () left_exp
-right = App () right_exp
+left, right :: Exp l -> Exp l
+left x = App (ann x) (fmap (const$ ann x) left_exp) x
+right x = App (ann x) (fmap (const $ ann x) right_exp) x
 
-returnCmd :: Exp () -> Exp ()
-returnCmd = LeftArrApp () returnA_exp
+returnCmd :: Exp l -> Exp l
+returnCmd x = LeftArrApp (ann x) (fmap (const $ ann x) returnA_exp) x
 
 compose_op, choice_op :: QOp ()
 returnA_exp, arr_exp, first_exp :: Exp ()
