@@ -10,7 +10,7 @@ Homepage:       http://www.haskell.org/arrows/
 Category:       Development
 Synopsis:       A preprocessor and quasiquoter for translating arrow notation
 Description:    A suite of preprocessor and quasiquoter to desugar arrow notation built on top of Ross Paterson's arrowp and the venerable haskell-src-exts.
-Extra-Source-Files: README
+Extra-Source-Files: README.md
 
 Flag Debug
   Description:         Enabled Hoed algorithmic debugging
