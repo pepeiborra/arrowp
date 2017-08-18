@@ -163,21 +163,21 @@ returnCmd = LeftArrApp () returnA_exp
 compose_op, choice_op :: QOp ()
 returnA_exp, arr_exp, first_exp :: Exp ()
 left_exp, right_exp, app_exp, loop_exp :: Exp ()
-qualArrowId :: String -> Exp ()
-qualArrowId   id = Var () $ UnQual () (Ident () id)
-qualArrowSymb :: String -> QOp ()
-qualArrowSymb id = QVarOp () $ UnQual () (Symbol () id)
-qualArrowCon :: String -> Exp ()
-qualArrowCon  id = Con () $ UnQual () (Symbol () id)
-arr_exp       = qualArrowId "arr"
-compose_op    = qualArrowSymb ">>>"
-first_exp     = qualArrowId "first"
-returnA_exp   = qualArrowId "returnA"
-choice_op     = qualArrowSymb "|||"
-left_exp      = Con () $ UnQual () (Symbol () "Left")
-right_exp     = Con () $ UnQual () (Symbol () "Right")
-app_exp       = qualArrowId "app"
-loop_exp      = qualArrowId "loop"
+unqualId :: String -> Exp ()
+unqualId   id = Var () $ UnQual () (Ident () id)
+unqualOp :: String -> QOp ()
+unqualOp id = QVarOp () $ UnQual () (Symbol () id)
+unqualCon :: String -> Exp ()
+unqualCon  id = Con () $ UnQual () (Symbol () id)
+arr_exp       = unqualId "arr"
+compose_op    = unqualOp ">>>"
+first_exp     = unqualId "first"
+returnA_exp   = unqualId "returnA"
+choice_op     = unqualOp "|||"
+left_exp      = unqualCon "Left"
+right_exp     = unqualCon "Right"
+app_exp       = unqualId "app"
+loop_exp      = unqualId "loop"
 
 
 instance (Eq a, Show a) => Observable (Set a) where
