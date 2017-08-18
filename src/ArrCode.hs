@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 module ArrCode (
@@ -188,9 +189,11 @@ isEmptyTuple :: Tuple -> Bool
 isEmptyTuple (Tuple t) = Set.null t
 
 patternTuple :: Tuple -> Pat ()
-patternTuple (Tuple t) = PTuple () Boxed (map (PVar ()) (Set.toList t))
+patternTuple (Tuple [x]) = PVar () x
+patternTuple (Tuple t)   = PTuple () Boxed (map (PVar ()) (Set.toList t))
 
 expTuple :: Tuple -> Exp ()
+expTuple (Tuple [t]) = Var () $ UnQual () t
 expTuple (Tuple t) = H.Tuple () Boxed (map (Var () . UnQual ()) (Set.toList t))
 
 emptyTuple :: Tuple
