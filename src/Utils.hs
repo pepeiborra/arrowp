@@ -162,6 +162,8 @@ instance DefinedVars GuardedRhs where
 same :: Eq s => Pat s -> Exp s -> Bool
 same (PApp _ n1 []) (Con _ n2) = n1 == n2
 same (PVar l n1) (Var _ n2) = UnQual l n1 == n2
+same (PTuple _ Boxed [pv]) y = same pv y
+same y (Tuple _ Boxed [pv]) = same y pv
 same (PTuple _ boxed ps) (Tuple _ boxed' es) =
   length ps == length es && boxed == boxed' && and (zipWith same ps es)
 same (PAsPat _ n _) (Var _ (UnQual _ n')) = n == n'
