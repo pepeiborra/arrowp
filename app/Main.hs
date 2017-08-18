@@ -47,6 +47,7 @@ main = runO $ do
         ParseOk x -> do
           let x' = translateModule (void x)
           hPutStr hOut $ prettyPrint x'
+          hClose hOut
 
 defaultExtensions :: [Extension]
 defaultExtensions = [e | e@EnableExtension{} <- knownExtensions] \\ map EnableExtension badExtensions
