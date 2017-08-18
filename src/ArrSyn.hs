@@ -77,27 +77,32 @@ transCmd' s p (H.Case () e as) =
    arr 0 (input s) p (H.Case () e as') >>> foldr1 (|||) (reverse cases)
   where
     (as', (ncases, cases)) = runState (mapM (transAlt s) as) (0, [])
-    transAlt s (Alt loc p gas decls) = do
+    transAlt = observeSt "transAlt" transAlt'
+    transAlt' s (Alt loc p gas decls) = do
       let (s', p') = addVars' s p
           (s'', decls') = addVars' s' decls
       gas' <- transGuardedRhss s'' gas
       return (H.Alt loc p' gas' decls')
-    transGuardedRhss s (UnGuardedRhs l c) = do
+    transGuardedRhss = observeSt "transGuardedRhss" transGuardedRhss'
+    transGuardedRhss' s (UnGuardedRhs l c) = do
       body <- newAlt s c
       return (H.UnGuardedRhs l body)
-    transGuardedRhss s (GuardedRhss l gas) = do
+    transGuardedRhss' s (GuardedRhss l gas) = do
       gas' <- mapM (transGuardedRhs s) gas
       return (H.GuardedRhss l gas')
-    transGuardedRhs s (GuardedRhs loc e c) = do
+    transGuardedRhs = observeSt "transGuardedRhs" transGuardedRhs'
+    transGuardedRhs' s (GuardedRhs loc e c) = do
       body <- newAlt s c
       return (H.GuardedRhs loc e body)
-    newAlt s c = do
+    newAlt = observeSt "newAlt" newAlt'
+    newAlt' s c = do
       let (e, a) =
             transTrimCmd s c
       (n, as) <- get
       put (n + 1, a : as)
       return (label n e)
-    label n e =
+    label = observe "label" label'
+    label' n e =
       times
         n
         right

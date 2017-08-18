@@ -9,7 +9,9 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing -Wno-orphans #-}
 module Utils where
 
+import           Control.Monad.Trans.State
 import           Data.Data
+import           Data.Functor.Identity
 import           Data.Generics.Aliases
 import           Data.Generics.Schemes
 import           Data.Generics.Uniplate.Data
@@ -225,6 +227,12 @@ right_exp     = unqualCon "Right"
 app_exp       = unqualId "app"
 loop_exp      = unqualId "loop"
 
+observeSt
+  :: (Observable a, Observable b, Observable c, Observable s)
+  => String -> (a -> b -> State s c) -> a -> b -> State s c
+observeSt name f a b = StateT $ \s -> Identity $ observe name f' a b s
+  where
+    f' a b = runState (f a b)
 
 instance (Eq a, Show a) => Observable (Set a) where
   constrain = constrainBase
@@ -251,6 +259,10 @@ instance {-# OVERLAPS #-} Observable (Pat()) where
 instance {-# OVERLAPS #-} Observable (QOp()) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (Op()) where
+  observer = observePretty
+instance {-# OVERLAPS #-} Observable (Rhs()) where
+  observer = observePretty
+instance {-# OVERLAPS #-} Observable (Alt()) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (Set (Name())) where
   constrain = constrainBase
