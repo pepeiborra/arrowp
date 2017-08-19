@@ -2,7 +2,6 @@
 module Main where
 
 import           Control.Arrow.Notation
-import           Control.Monad
 import           Data.List
 import           Debug.Hoed.Pure
 import           Language.Haskell.Exts
@@ -45,8 +44,8 @@ main = runO $ do
           printf "Parse error at %s:%d:%d: %s" orig srcLine srcColumn err
           exitFailure
         ParseOk x -> do
-          let x' = translateModule (void x)
-          hPutStr hOut $ prettyPrint x'
+          let x' = translateModule x
+          hPutStr hOut $ prettyPrintWithMode defaultMode{linePragmas=True} x'
           hClose hOut
 
 defaultExtensions :: [Extension]

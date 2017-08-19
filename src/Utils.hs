@@ -1,21 +1,22 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP                 #-}
+{-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE OverloadedLists     #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE TypeApplications    #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -Wno-orphans #-}
 module Utils
   ( module Utils
-  , varss
-  , freeVars
-  , pvars
   )where
 
+import           Control.Monad
 import           Control.Monad.Trans.State
 import           Data.Data
+import           Data.Default
 import           Data.Functor.Identity
 import           Data.Generics.Uniplate.Data
 import           Data.List
@@ -24,7 +25,7 @@ import           Data.Set                       (Set)
 import qualified Data.Set                       as Set
 import           Debug.Hoed.Pure                hiding (Module)
 import           Language.Haskell.Exts
-import           Language.Haskell.Exts.FreeVars
+import qualified Language.Haskell.Exts.FreeVars as HSE
 #ifdef DEBUG
 import           Language.Haskell.Exts.Observe  ()
 #endif
@@ -32,8 +33,20 @@ import           Language.Haskell.Exts.Observe  ()
 type FreeVarsFun l = Maybe(Set (Name l)) -> (Set(Name l), Maybe(Set(Name l)))
 type FreeVars l x = x -> FreeVarsFun l
 
-definedVars :: AllVars a => a -> Set(Name (SrcLocType a))
-definedVars = pvars
+freeVars
+  :: (Observable a, Observable (Set (Name l)), HSE.FreeVars a, l ~ HSE.SrcLocType a)
+  => a -> Set (Name l)
+freeVars = observe "freeVars" HSE.freeVars
+
+freeVarss
+  :: (Observable a, Observable (Set (Name l)), HSE.AllVars a, l ~ HSE.SrcLocType a)
+  => a -> Set (Name l)
+freeVarss = observe "freeVarss" HSE.varss
+
+definedVars
+  :: (Observable a, Observable(Set(Name l)), HSE.AllVars a, l ~ HSE.SrcLocType a)
+  => a -> Set (Name l)
+definedVars = observe "definedVars" HSE.pvars
 
 -- | Are a tuple pattern and an expression tuple equal ?
 same ::(Observable(Exp s), Observable(Pat s), Eq s) => Pat s -> Exp s -> Bool
@@ -82,22 +95,22 @@ pairP
   => Pat l -> Pat l -> Pat l
 pairP p1 p2 = PTuple (ann p1) Boxed [hidePat (definedVars p2) p1, p2]
 
-left, right :: Exp l -> Exp l
-left x = App (ann x) (fmap (const$ ann x) left_exp) x
-right x = App (ann x) (fmap (const $ ann x) right_exp) x
+left, right :: Default l => Exp l -> Exp l
+left x = App (ann x) left_exp x
+right x = App (ann x) right_exp x
 
-returnCmd :: Exp l -> Exp l
-returnCmd x = LeftArrApp (ann x) (fmap (const $ ann x) returnA_exp) x
+returnCmd :: Default l => Exp l -> Exp l
+returnCmd x = LeftArrApp (ann x) returnA_exp x
 
-compose_op, choice_op :: QOp ()
-returnA_exp, arr_exp, first_exp :: Exp ()
-left_exp, right_exp, app_exp, loop_exp :: Exp ()
-unqualId :: String -> Exp ()
-unqualId   id = Var () $ UnQual () (Ident () id)
-unqualOp :: String -> QOp ()
-unqualOp id = QVarOp () $ UnQual () (Symbol () id)
-unqualCon :: String -> Exp ()
-unqualCon  id = Con () $ UnQual () (Symbol () id)
+compose_op, choice_op :: Default l => QOp l
+returnA_exp, arr_exp, first_exp :: Default l => Exp l
+left_exp, right_exp, app_exp, loop_exp :: Default l => Exp l
+unqualId :: Default l => String -> Exp l
+unqualId   id = Var def $ UnQual def (Ident def id)
+unqualOp :: Default l => String -> QOp l
+unqualOp id = QVarOp def $ UnQual def (Symbol def id)
+unqualCon :: Default l => String -> Exp l
+unqualCon  id = Con def $ UnQual def (Symbol def id)
 arr_exp       = unqualId "arr"
 compose_op    = unqualOp ">>>"
 first_exp     = unqualId "first"
@@ -136,32 +149,45 @@ instance (Eq a, Eq k, Show a, Show k) => Observable (Map k a) where
   constrain = constrainBase
   observer = observeBase
 
+-- | The type of src code locations used by arrowp-qq
+newtype SrcSpanInfoDef = SrcSpanInfoDef {getSrcSpanInfo :: SrcSpanInfo}
+  deriving (Data, Eq, Ord, Typeable)
+
+instance Show SrcSpanInfoDef where show _ = "<loc>"
+
+instance Default SrcSpanInfoDef where
+  def = SrcSpanInfoDef noSrcSpan
+
+instance Observable SrcSpanInfoDef where
+  observer = observeOpaque "<loc>"
+  constrain = constrainBase
+
 -- Override some AST instances for comprehension
-instance {-# OVERLAPS #-} Observable (Exp()) where
+instance {-# OVERLAPS #-} Observable (Exp SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (Name()) where
+instance {-# OVERLAPS #-} Observable (Name SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (QName()) where
+instance {-# OVERLAPS #-} Observable (QName SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable [Stmt()] where
+instance {-# OVERLAPS #-} Observable [Stmt SrcSpanInfoDef] where
   observer lit cxt =
     seq lit $ send (intercalate ";" $ fmap prettyPrint lit) (return lit) cxt
-instance {-# OVERLAPS #-} Observable (Stmt()) where
+instance {-# OVERLAPS #-} Observable (Stmt SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (Pat()) where
+instance {-# OVERLAPS #-} Observable (Pat SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (QOp()) where
+instance {-# OVERLAPS #-} Observable (QOp SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (Op()) where
+instance {-# OVERLAPS #-} Observable (Op SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (Rhs()) where
+instance {-# OVERLAPS #-} Observable (Rhs SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (Alt()) where
+instance {-# OVERLAPS #-} Observable (Alt SrcSpanInfoDef) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (Set (Name())) where
+instance {-# OVERLAPS #-} Observable (Set (Name SrcSpanInfoDef)) where
   constrain = constrainBase
   observer x cxt =
-    seq x $ send (bracket $ intercalate "," $ prettyPrint <$> Set.toList x) (return x) cxt
+    seq x $ send (bracket $ intercalate "," $ prettyPrint <$> map void (Set.toList x)) (return x) cxt
 
 observePretty lit cxt = seq lit $ send (prettyPrint lit) (return lit) cxt
 
