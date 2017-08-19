@@ -16,11 +16,12 @@ module ArrCode (
       ifte, app, loop, returnA
       ) where
 
-import           Data.Set                     (Set)
-import qualified Data.Set                     as Set
+import           Data.Set                      (Set)
+import qualified Data.Set                      as Set
 import           Debug.Hoed.Pure
-import           Language.Haskell.Exts.Syntax hiding (Let, Tuple)
-import qualified Language.Haskell.Exts.Syntax as H
+import           Language.Haskell.Exts.Bracket
+import           Language.Haskell.Exts.Syntax  hiding (Let, Tuple)
+import qualified Language.Haskell.Exts.Syntax  as H
 import           Utils
 
 data Arrow = Arrow
@@ -65,7 +66,7 @@ bind vars a = a {context = context a `minusTuple` vars}
 anon :: Int -> Arrow -> Arrow
 anon anonCount a = a {anonArgs = anonArgs a + anonCount}
 arr :: Int -> Tuple -> Pat () -> Exp () -> Arrow
-arr anons t p e =
+arr = observe "arr" $ \anons t p e ->
   Arrow
   { code =
       if same p e
@@ -154,11 +155,11 @@ compose (Compose f as g) b = Compose f as (compose g b)
 compose a1 a2 = Compose a1 [] a2
 
 toHaskell :: Arrow -> Exp ()
-toHaskell = toHaskellCode . code
+toHaskell = rebracket1 . toHaskellCode . code
   where
     toHaskellCode ReturnA = returnA_exp
     toHaskellCode (Arr n p bs e) =
-      App () arr_exp (times n (App () first_exp) body)
+      App () arr_exp (times n (Paren () . App () first_exp) body)
       where
         body = (Lambda () [p] (foldr addBinding e bs))
         addBinding (BindLet ds) e = H.Let () ds e
@@ -168,9 +169,9 @@ toHaskell = toHaskellCode . code
       foldr (comp . toHaskellArg) (toHaskellArg g) (f : as)
       where
         comp f = InfixApp () f compose_op
-    toHaskellCode (Op op as) = foldl (App ()) op (map toHaskellCode as)
+    toHaskellCode (Op op as) = foldl (App ()) op (map (Paren () . toHaskellCode) as)
     toHaskellCode (InfixOp a1 op a2) =
-      InfixApp () (toHaskellArg a1) op (toHaskellArg a2)
+      InfixApp () (Paren () $ toHaskellArg a1) op (Paren () $ toHaskellArg a2)
     toHaskellCode (Let nas a) =
       H.Let () (BDecls () $ map toHaskellDecl nas) (toHaskellCode a)
       where

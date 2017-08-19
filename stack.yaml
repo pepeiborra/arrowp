@@ -6,7 +6,7 @@ packages:
 - .
 - location: 
     git: http://github.com/pepeiborra/haskell-src-exts-util.git
-    commit: 559ffb1ca94b91e216f3d636d4dd9caf046409d3
+    commit: 5cf63e8db847246477e88f59d486ae1b0698fe07
   extra-dep: true
 
 resolver: nightly-2017-08-17
