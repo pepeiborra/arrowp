@@ -188,12 +188,14 @@ isEmptyTuple :: Tuple -> Bool
 isEmptyTuple (Tuple t) = Set.null t
 
 patternTuple :: Tuple -> Pat ()
+patternTuple (Tuple [])  = PApp () (unit_con_name ()) []
 patternTuple (Tuple [x]) = PVar () x
 patternTuple (Tuple t)   = PTuple () Boxed (map (PVar ()) (Set.toList t))
 
 expTuple :: Tuple -> Exp ()
+expTuple (Tuple [])  = unit_con ()
 expTuple (Tuple [t]) = Var () $ UnQual () t
-expTuple (Tuple t) = H.Tuple () Boxed (map (Var () . UnQual ()) (Set.toList t))
+expTuple (Tuple t)   = H.Tuple () Boxed (map (Var () . UnQual ()) (Set.toList t))
 
 emptyTuple :: Tuple
 emptyTuple = Tuple Set.empty
