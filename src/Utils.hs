@@ -108,6 +108,16 @@ right_exp     = unqualCon "Right"
 app_exp       = unqualId "app"
 loop_exp      = unqualId "loop"
 
+
+-- | Irrefutable version of a pattern
+
+irrPat :: Pat l -> Pat l
+irrPat p@PVar{}       = p
+irrPat (PParen l p)   = PParen l (irrPat p)
+irrPat (PAsPat l n p) = PAsPat l n (irrPat p)
+irrPat p@PWildCard{}  = p
+irrPat p@PIrrPat{}    = p
+irrPat p              = PIrrPat (ann p) p
 observeSt
   :: (Observable a, Observable b, Observable c, Observable s)
   => String -> (a -> b -> State s c) -> a -> b -> State s c

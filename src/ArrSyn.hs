@@ -167,7 +167,7 @@ transDo' s p (RecStmt l rss:ss) c =
     (loop
        (transDo
           s'
-          (pairP p (PIrrPat l (patternTuple feedback)))
+          (pairP p (irrPat (patternTuple feedback)))
           rss'
           (returnCmd (pair output (expTuple feedback)))) >>>
      a)
