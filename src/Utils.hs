@@ -118,6 +118,9 @@ irrPat (PAsPat l n p) = PAsPat l n (irrPat p)
 irrPat p@PWildCard{}  = p
 irrPat p@PIrrPat{}    = p
 irrPat p              = PIrrPat (ann p) p
+
+-- | Observing functions for algorithmic debugging
+
 observeSt
   :: (Observable a, Observable b, Observable c, Observable s)
   => String -> (a -> b -> State s c) -> a -> b -> State s c
@@ -161,4 +164,6 @@ instance {-# OVERLAPS #-} Observable (Set (Name())) where
     seq x $ send (bracket $ intercalate "," $ prettyPrint <$> Set.toList x) (return x) cxt
 
 observePretty lit cxt = seq lit $ send (prettyPrint lit) (return lit) cxt
+
+bracket :: [Char] -> [Char]
 bracket s = '[' : s ++ "]"
