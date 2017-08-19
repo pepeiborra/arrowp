@@ -83,8 +83,7 @@ arrLet anons t p ds e =
   }
   where
     vs =
-      (freeVars e `Set.union` freeVars ds) `Set.difference`
-      definedVars ds
+      (freeVars e `Set.union` varss ds) `Set.difference` definedVars ds
 ifte :: Exp () -> Arrow -> Arrow -> Arrow
 ifte c th el =
   Arrow

@@ -4,6 +4,10 @@ extra-deps:
 - NoHoed-0.1.0
 packages:
 - .
+- location: 
+    git: git@github.com:pepeiborra/haskell-src-exts-util.git
+    commit: 559ffb1ca94b91e216f3d636d4dd9caf046409d3
+  extra-dep: true
 
 resolver: lts-9.0
 ghc-options:

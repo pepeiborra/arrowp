@@ -41,7 +41,7 @@ startPattern = observe "startPattern" startPattern'
 startPattern' :: Pat () -> (TransState, Pat ())
 startPattern' p =
       (TransState {
-              locals = freeVars p,
+              locals = definedVars p,
               cmdVars = Map.empty
        }, p)
 -- The pattern argument is often pseudo-recursively defined in terms of
@@ -118,7 +118,7 @@ transCmd' s p (H.App () c arg) =
       arr (anonArgs a) (input s) p (pair e arg) >>> a
       where   (e, a) = transTrimCmd s c
 transCmd' s p (H.Lambda () ps c) =
-  anon (length ps) $ bind (freeVars ps) $ transCmd s' (foldl pairP p ps') c
+  anon (length ps) $ bind (pvars ps) $ transCmd s' (foldl pairP p ps') c
   where
     (s', ps') = addVars' s ps
 transCmd' _ _ x = error $ "transCmd: " ++ show x
@@ -155,7 +155,7 @@ transDo' s p (Generator () pg cg:ss) c =
       else
         arr 0 (input s) p (pair eg (expTuple u)) >>> first ag u >>> a
       where   (s', pg') = addVars' s pg
-              a = bind (freeVars pg)
+              a = bind (pvars pg)
                       (transDo s' (pairP pg' (patternTuple u)) ss c)
               u = context a
               (eg, ag) = transTrimCmd s cg
@@ -210,7 +210,7 @@ instance AddVars a => AddVars (Maybe a) where
 
 instance AddVars (Pat ()) where
       addVars s p =
-              (s {locals = locals s `Set.union` freeVars p}, p)
+              (s {locals = locals s `Set.union` pvars p}, p)
 
 instance AddVars (Decl ()) where
       addVars s d@(FunBind l (Match _ n _ _ _:_)) =

@@ -29,6 +29,7 @@ Library
                    array,
                    containers,
                    haskell-src-exts,
+                   haskell-src-exts-util,
                    haskell-src-meta,
                    syb,
                    template-haskell < 2.13, 
