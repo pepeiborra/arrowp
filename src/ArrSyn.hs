@@ -160,9 +160,9 @@ transDo' s p (Generator l pg cg:ss) c =
       else
         arr 0 (input s) p (pair eg (expTuple u)) >>> first ag u >>> a
       where   (s', pg') = addVars' s pg
-              a = bind (definedVars pg)
+              a = observe "a" $ bind (definedVars pg)
                       (transDo s' (pairP pg' (patternTuple u)) ss c)
-              u = context a
+              u = observe "u" $ context a
               (eg, ag) = transTrimCmd s cg
 transDo' s p (LetStmt l decls : ss) c =
       transCmd s p (H.Let l decls (H.Do l (ss ++ [Qualifier l c])))

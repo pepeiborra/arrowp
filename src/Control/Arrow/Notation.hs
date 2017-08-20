@@ -20,7 +20,7 @@ translateModule = observe "translateModule" (everywhere (mkT translateExp))
 
 
 translateExp :: Exp SrcSpanInfo -> Exp SrcSpanInfo
-translateExp = observe "translateExp" translateExp'
+translateExp = translateExp'
 translateExp' :: Exp SrcSpanInfo -> Exp SrcSpanInfo
 translateExp' (Proc _ pat exp) =
   fmap getSrcSpanInfo $ ArrSyn.translate (fmap S pat) (fmap S exp)

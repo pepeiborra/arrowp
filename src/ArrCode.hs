@@ -79,7 +79,7 @@ app = arrowExp app_exp
 returnA = arrowExp returnA_exp
 
 bind :: Set (Name S) -> Arrow -> Arrow
-bind vars a = a {context = context a `minusTuple` vars}
+bind = observe "bind" $ \vars a -> a {context = context a `minusTuple` vars}
 anon :: Int -> Arrow -> Arrow
 anon anonCount a = a {anonArgs = anonArgs a + anonCount}
 arr
@@ -160,17 +160,20 @@ letCmd defs a =
   }
 
 compose :: Code -> Code -> Code
-compose ReturnA a = a
-compose a ReturnA = a
-compose a1@(Arr n1 p1 ds1 e1) a2@(Arr n2 p2 ds2 e2)
+compose = observe "compose" compose'
+
+compose' :: Code -> Code -> Code
+compose' ReturnA a = a
+compose' a ReturnA = a
+compose' a1@(Arr n1 p1 ds1 e1) a2@(Arr n2 p2 ds2 e2)
   | n1 /= n2 = Compose a1 [] a2 -- could do better, but can this arise?
   | same p2 e1 = Arr n1 p1 (ds1 ++ ds2) e2
   | otherwise = Arr n1 p1 (ds1 ++ BindCase p2 e1 : ds2) e2
-compose (Compose f1 as1 g1) (Compose f2 as2 g2) =
+compose' (Compose f1 as1 g1) (Compose f2 as2 g2) =
   Compose f1 (as1 ++ (g1 : f2 : as2)) g2
-compose a (Compose f bs g) = Compose (compose a f) bs g
-compose (Compose f as g) b = Compose f as (compose g b)
-compose a1 a2 = Compose a1 [] a2
+compose' a (Compose f bs g) = Compose (compose a f) bs g
+compose' (Compose f as g) b = Compose f as (compose g b)
+compose' a1 a2 = Compose a1 [] a2
 
 toHaskell :: Arrow -> Exp S
 toHaskell = rebracket1 . toHaskellCode . code
