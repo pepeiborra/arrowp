@@ -23,5 +23,5 @@ translateExp :: Exp SrcSpanInfo -> Exp SrcSpanInfo
 translateExp = observe "translateExp" translateExp'
 translateExp' :: Exp SrcSpanInfo -> Exp SrcSpanInfo
 translateExp' (Proc _ pat exp) =
-  fmap getSrcSpanInfo $ ArrSyn.translate (fmap SrcSpanInfoDef pat) (fmap SrcSpanInfoDef exp)
+  fmap getSrcSpanInfo $ ArrSyn.translate (fmap S pat) (fmap S exp)
 translateExp' other            = other

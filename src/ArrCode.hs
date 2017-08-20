@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE OverloadedLists      #-}
@@ -20,7 +21,6 @@ module ArrCode (
       left_exp, right_exp, app_exp, loop_exp,
       ifte, app, loop, returnA
       ) where
-import           Data.Data
 import           Data.Default
 import           Data.Set                      (Set)
 import qualified Data.Set                      as Set
@@ -28,73 +28,62 @@ import           Debug.Hoed.Pure
 import           Language.Haskell.Exts.Bracket
 import           Language.Haskell.Exts.Syntax  hiding (Let, Tuple)
 import qualified Language.Haskell.Exts.Syntax  as H
-import           Language.Haskell.Exts.Type
+import           Language.Haskell.Exts.Type hiding (S)
 import           Utils
 
-data Arrow l = Arrow
-  { context  :: Tuple l -- named input components used by the arrow
+data Arrow = Arrow
+  { context  :: Tuple -- named input components used by the arrow
   , anonArgs :: Int     -- number of unnamed arguments
-  , code     :: Code l
+  , code     :: Code
   }
   deriving (Eq, Generic, Show)
 
-instance HasSrcLoc (Arrow l) where
-  type SrcLocType (Arrow l) = l
+instance HasSrcLoc Arrow  where
+  type SrcLocType Arrow = S
 
-instance (Eq l, Observable l, Show l) => Observable (Arrow l)
+instance Observable Arrow
 
-data VarDecl a = VarDecl (Name (SrcLocType a)) a
-      deriving Generic
+data VarDecl a = VarDecl (Name S) a
+      deriving (Functor, Generic)
 
 -- required Undecidable instances
-deriving instance (Eq a, Eq(SrcLocType a)) => Eq (VarDecl a)
-deriving instance (Show a, Show(SrcLocType a)) => Show (VarDecl a)
+deriving instance (Eq a) => Eq (VarDecl a)
+deriving instance (Show a) => Show (VarDecl a)
 
-mapVarDecl :: SrcLocType a ~ SrcLocType b => (a -> b) -> VarDecl a -> VarDecl b
-mapVarDecl f (VarDecl name a) = VarDecl name (f a)
+instance Observable a => Observable (VarDecl a)
 
-instance (Observable a, Observable l, Observable (Name l), l ~ SrcLocType a) => Observable (VarDecl a)
-
-data Code l
+data Code
       = ReturnA                       -- returnA = arr id
-      | Arr Int (Pat l) [Binding l] (Exp l)   -- arr (first^n (\p -> ... e))
-      | Compose (Code l) [Code l] (Code l)  -- composition of 2 or more elts
-      | Op (Exp l) [Code l]         -- combinator applied to arrows
-      | InfixOp (Code l) (QOp l) (Code l)
-      | Let [VarDecl (Code l)] (Code l)
-      | Ifte (Exp l) (Code l) (Code l)
+      | Arr Int (Pat S) [Binding] (Exp S)   -- arr (first^n (\p -> ... e))
+      | Compose Code [Code] Code  -- composition of 2 or more elts
+      | Op (Exp S) [Code]         -- combinator applied to arrows
+      | InfixOp Code (QOp S) Code
+      | Let [VarDecl Code] Code
+      | Ifte (Exp S) Code Code
   deriving (Eq, Generic, Show)
 
-instance HasSrcLoc (Code l) where
-  type SrcLocType (Code l) = l
+instance HasSrcLoc Code where
+  type SrcLocType Code = S
 
-instance Observable l => Observable (Code l)
+instance Observable Code
 
-data Binding l = BindLet (Binds l) | BindCase (Pat l) (Exp l)
+data Binding = BindLet (Binds S) | BindCase (Pat S) (Exp S)
   deriving (Eq,Generic, Show)
-instance Observable l => Observable (Binding l)
+instance Observable Binding
 
-loop :: Ord l => Default l => Arrow l -> Arrow l
+loop :: Arrow -> Arrow
 loop f = applyOp loop_exp [f]
 
-app, returnA :: (Eq l, Default l) => Arrow l
+app, returnA :: Arrow
 app = arrowExp app_exp
 returnA = arrowExp returnA_exp
 
-bind :: Ord l => Set (Name l) -> Arrow l -> Arrow l
+bind :: Set (Name S) -> Arrow -> Arrow
 bind vars a = a {context = context a `minusTuple` vars}
-anon :: Int -> Arrow l -> Arrow l
+anon :: Int -> Arrow -> Arrow
 anon anonCount a = a {anonArgs = anonArgs a + anonCount}
 arr
-  :: ( Data l
-     , Ord l
-     , Show l
-     , Observable l
-     , Observable (Exp l)
-     , Observable (Pat l)
-     , Observable (Set(Name l))
-     )
-  => Int -> Tuple l -> Pat l -> Exp l -> Arrow l
+  :: Int -> Tuple -> Pat S -> Exp S -> Arrow
 arr = observe "arr" $ \anons t p e ->
   Arrow
   { code =
@@ -104,14 +93,7 @@ arr = observe "arr" $ \anons t p e ->
   , context = t `intersectTuple` freeVars e
   , anonArgs = anons
   }
-arrLet
-  :: ( Data l
-     , Observable l
-     , Observable (Exp l)
-     , Observable (Set (Name l))
-     , Ord l
-     )
-  => Int -> Tuple l -> Pat l -> Binds l -> Exp l -> Arrow l
+arrLet :: Int -> Tuple -> Pat S -> Binds S -> Exp S -> Arrow
 arrLet anons t p ds e =
   Arrow
   { code = Arr anons p [BindLet ds] e
@@ -121,16 +103,16 @@ arrLet anons t p ds e =
   where
     vs =
       (freeVars e `Set.union` freeVarss ds) `Set.difference` definedVars ds
-ifte :: Ord l => Exp l -> Arrow l -> Arrow l -> Arrow l
+ifte :: Exp S -> Arrow -> Arrow -> Arrow
 ifte c th el =
   Arrow
   { code = Ifte c (code th) (code el)
   , context = context th `unionTuple` context el
   , anonArgs = 0
   }
-(>>>) :: (Eq l, Observable(Exp l), Observable(Pat l)) => Arrow l -> Arrow l -> Arrow l
+(>>>) :: Arrow -> Arrow -> Arrow
 a1 >>> a2 = a1 { code = compose (code a1) (code a2) }
-arrowExp :: (Eq l, Default l) => Exp l -> Arrow l
+arrowExp :: Exp S -> Arrow
 arrowExp e =
   Arrow
   { code =
@@ -140,7 +122,7 @@ arrowExp e =
   , context = emptyTuple
   , anonArgs = 0
   }
-applyOp :: Ord l => Exp l -> [Arrow l] -> Arrow l
+applyOp :: Exp S -> [Arrow] -> Arrow
 applyOp e as =
   Arrow
   { code = Op e (map code as)
@@ -148,38 +130,36 @@ applyOp e as =
   , anonArgs = 0 -- BUG: see below
   }
 
-infixOp :: Ord l => Arrow l -> QOp l -> Arrow l -> Arrow l
+infixOp :: Arrow -> QOp S -> Arrow -> Arrow
 infixOp a1 op a2 =
   Arrow
   { code = InfixOp (code a1) op (code a2)
   , context = context a1 `unionTuple` context a2
   , anonArgs = 0 -- BUG: as above
   }
-first :: (Default l, Ord l) => Arrow l -> Tuple l -> Arrow l
+first :: Arrow -> Tuple -> Arrow
 first a ps =
   Arrow
   { code = Op first_exp [code a]
   , context = context a `unionTuple` ps
   , anonArgs = 0
   }
-(|||) :: (Default l, Ord l) => Arrow l -> Arrow l -> Arrow l
+(|||) :: Arrow -> Arrow -> Arrow
 a1 ||| a2 =
   Arrow
   { code = InfixOp (code a1) choice_op (code a2)
   , context = context a1 `unionTuple` context a2
   , anonArgs = 0
   }
-letCmd :: [VarDecl (Arrow l)] -> Arrow l -> Arrow l
+letCmd :: [VarDecl Arrow] -> Arrow -> Arrow
 letCmd defs a =
   Arrow
-  { code = Let (map (mapVarDecl code) defs) (code a)
+  { code = Let (map (fmap code) defs) (code a)
   , context = context a
   , anonArgs = anonArgs a
   }
 
-compose
-  :: (Eq l, Observable (Exp l), Observable (Pat l))
-  => Code l -> Code l -> Code l
+compose :: Code -> Code -> Code
 compose ReturnA a = a
 compose a ReturnA = a
 compose a1@(Arr n1 p1 ds1 e1) a2@(Arr n2 p2 ds2 e2)
@@ -192,10 +172,10 @@ compose a (Compose f bs g) = Compose (compose a f) bs g
 compose (Compose f as g) b = Compose f as (compose g b)
 compose a1 a2 = Compose a1 [] a2
 
-toHaskell :: forall l. (Default l, Data l) => Arrow l -> Exp l
+toHaskell :: Arrow -> Exp S
 toHaskell = rebracket1 . toHaskellCode . code
   where
-    toHaskellCode :: Code l -> Exp l
+    toHaskellCode :: Code -> Exp S
     toHaskellCode ReturnA = returnA_exp
     toHaskellCode (Arr n p bs e) =
       App def arr_exp (times n (Paren def . App def first_exp) body)
@@ -220,29 +200,29 @@ toHaskell = rebracket1 . toHaskellCode . code
 
     toHaskellArg = toHaskellCode
 
-newtype Tuple l = Tuple (Set (Name l))
+newtype Tuple = Tuple (Set (Name S))
   deriving (Eq,Generic,Show)
-instance (Eq l, Observable l, Show l) => Observable (Tuple l)
+instance Observable Tuple
 
-isEmptyTuple :: Tuple l -> Bool
+isEmptyTuple :: Tuple -> Bool
 isEmptyTuple (Tuple t) = Set.null t
 
-patternTuple :: (Default l, Ord l) => Tuple l -> Pat l
+patternTuple :: Tuple -> Pat S
 patternTuple (Tuple [])  = PApp def (unit_con_name def) []
 patternTuple (Tuple [x]) = PVar def x
 patternTuple (Tuple t)   = PTuple def Boxed (map (PVar def) (Set.toList t))
 
-expTuple :: (Default l, Ord l) => Tuple l -> Exp l
+expTuple :: Tuple -> Exp S
 expTuple (Tuple [])  = unit_con def
 expTuple (Tuple [t]) = Var def $ UnQual def t
 expTuple (Tuple t)   = H.Tuple def Boxed (map (Var def . UnQual def) (Set.toList t))
 
-emptyTuple :: Tuple l
+emptyTuple :: Tuple
 emptyTuple = Tuple Set.empty
-unionTuple :: Ord l => Tuple l -> Tuple l -> Tuple l
+unionTuple :: Tuple -> Tuple -> Tuple
 unionTuple (Tuple a) (Tuple b) = Tuple (a `Set.union` b)
 
-minusTuple :: Ord l => Tuple l -> Set (Name l) -> Tuple l
+minusTuple :: Tuple -> Set (Name S) -> Tuple
 Tuple t `minusTuple` vs = Tuple (t `Set.difference` vs)
-intersectTuple :: Ord l => Tuple l -> Set (Name l) -> Tuple l
+intersectTuple :: Tuple -> Set (Name S) -> Tuple
 Tuple t `intersectTuple` vs = Tuple (t `Set.intersection` vs)

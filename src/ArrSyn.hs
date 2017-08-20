@@ -14,8 +14,6 @@ import           ArrCode
 import           Utils
 
 import           Control.Monad.Trans.State
-import           Data.Data
-import           Data.Default
 import           Data.List                  (mapAccumL)
 import           Data.Map                   (Map)
 import qualified Data.Map                   as Map
@@ -26,7 +24,7 @@ import           Language.Haskell.Exts      (Alt (..), Binds (..), Decl (..),
                                              Exp (), GuardedRhs (..),
                                              Match (..), Name, Pat (..),
                                              Rhs (..), Stmt (..))
-import           Language.Haskell.Exts.Type
+import           Language.Haskell.Exts.Type hiding (S)
 
 import qualified Language.Haskell.Exts      as H
 
@@ -38,24 +36,14 @@ import qualified Language.Haskell.Exts      as H
 --   by the Arrow type, and
 -- - toHaskell turns that into Haskell.
 
-translate :: SrcLocConstrain l => Pat l -> Exp l -> Exp l
+translate :: Pat S -> Exp S -> Exp S
 translate p c = toHaskell (transCmd s p' c)
       where   (s, p') = startPattern p
 
-startPattern
-  :: ( Data l
-     , Observable l
-     , Observable (Pat l)
-     , Observable (Set (Name l))
-     , Ord l
-     , Show l
-     )
-  => Pat l -> (TransState l, Pat l)
+startPattern :: Pat S -> (TransState, Pat S)
 startPattern = observe "startPattern" startPattern'
 
-startPattern'
-  :: (Data l, Observable (Pat l), Observable (Set (Name l)), Ord l)
-  => Pat l -> (TransState l, Pat l)
+startPattern' :: Pat S -> (TransState, Pat S)
 startPattern' p =
       (TransState {
               locals = definedVars p,
@@ -65,27 +53,10 @@ startPattern' p =
 -- the context part of the result of these functions.  (It's not real
 -- recursion, because that part is independent of the pattern.)
 
-type SrcLocConstrain l =
-     ( Data l
-     , Default l
-     , Observable (Alt l)
-     , Observable (Exp l)
-     , Observable (Pat l)
-     , Observable (Rhs l)
-     , Observable (Stmt l)
-     , Observable [Stmt l]
-     , Observable (Set (Name l))
-     , Observable l
-     , Ord l
-     , Show l
-     )
-
-transCmd :: SrcLocConstrain l => TransState l -> Pat l -> Exp l -> Arrow l
+transCmd :: TransState -> Pat S -> Exp S -> Arrow
 transCmd = observe "transCmd" transCmd'
 
-transCmd'
-  :: SrcLocConstrain l
-  => TransState l -> Pat l -> Exp l -> Arrow l
+transCmd' :: TransState -> Pat S -> Exp S -> Arrow
 transCmd' s p (H.LeftArrApp l f e)
       | Set.null (freeVars f `Set.intersection` locals s) =
               arr 0 (input s) p e >>> arrowExp f
@@ -169,16 +140,16 @@ transCmd' _ _ x = error $ "transCmd: " ++ show x
 -- 	proc p -> c = arr (first^n (p -> e)) >>> (proc p' -> c)
 
 -- where n is the number of anonymous arguments taken by c.
-transTrimCmd :: SrcLocConstrain l => TransState l -> Exp l -> (Exp l, Arrow l)
+transTrimCmd :: TransState -> Exp S -> (Exp S, Arrow)
 transTrimCmd = observe "transTrimCmd" transTrimCmd'
-transTrimCmd' :: SrcLocConstrain l => TransState l -> Exp l -> (Exp l, Arrow l)
+transTrimCmd' :: TransState -> Exp S -> (Exp S, Arrow)
 transTrimCmd' s c = (expTuple (context a), a)
       where   a = transCmd s (patternTuple (context a)) c
 
-transDo :: SrcLocConstrain l => TransState l -> Pat l -> [Stmt l] -> Exp l -> Arrow l
+transDo :: TransState -> Pat S -> [Stmt S] -> Exp S -> Arrow
 transDo = observe "transDo" transDo'
 
-transDo' :: SrcLocConstrain l => TransState l -> Pat l -> [Stmt l] -> Exp l -> Arrow l
+transDo' :: TransState -> Pat S -> [Stmt S] -> Exp S -> Arrow
 transDo' s p [] c =
       transCmd s p c
 transDo' s p (Qualifier l exp : ss) c =
@@ -219,23 +190,23 @@ transDo' s p (RecStmt l rss:ss) c =
               (foldr (pair . H.Var l . H.UnQual l) output (Set.toList defined)))) `intersectTuple`
       defined
 
-data TransState l = TransState {
-      locals  :: Set (Name l),   -- vars in scope defined in this proc
-      cmdVars :: Map (Name l) (Arrow l)
+data TransState = TransState {
+      locals  :: Set (Name S),   -- vars in scope defined in this proc
+      cmdVars :: Map (Name S) Arrow
   } deriving (Eq, Generic, Show)
 
-instance (Eq l, Show l) => Observable (TransState l)
+instance Observable TransState
 
-input :: TransState l -> Tuple l
+input :: TransState -> Tuple
 input s = Tuple (locals s)
 
 addVars'
   :: (Observable a, AddVars a, Eq l, Show l, l ~ SrcLocType a)
-  => TransState l -> a -> (TransState l, a)
+  => TransState -> a -> (TransState, a)
 addVars' = observe "addVars" addVars
 
 class AddVars a where
-      addVars :: l ~ SrcLocType a => TransState l -> a -> (TransState l, a)
+      addVars :: TransState -> a -> (TransState, a)
 
 instance AddVars a => AddVars [a] where
       addVars = mapAccumL addVars
@@ -243,11 +214,11 @@ instance AddVars a => AddVars [a] where
 instance AddVars a => AddVars (Maybe a) where
   addVars = mapAccumL addVars
 
-instance (Data l, Observable l, Ord l, Show l) => AddVars (Pat l) where
+instance AddVars (Pat S) where
       addVars s p =
               (s {locals = locals s `Set.union` definedVars p}, p)
 
-instance (Data l, Observable l, Ord l, Show l) => AddVars (Decl l) where
+instance AddVars (Decl S) where
       addVars s d@(FunBind l (Match _ n _ _ _:_)) =
               (s', d)
               where   (s', _) = addVars s (PVar l n)
@@ -256,7 +227,7 @@ instance (Data l, Observable l, Ord l, Show l) => AddVars (Decl l) where
               where   (s', p') = addVars s p
       addVars s d = (s, d)
 
-instance (Data l, Observable l, Ord l, Show l) => AddVars (Stmt l) where
+instance AddVars (Stmt S) where
       addVars s it@Qualifier{} = (s, it)
       addVars s (Generator loc p c) =
               (s', Generator loc p' c)
@@ -268,6 +239,6 @@ instance (Data l, Observable l, Ord l, Show l) => AddVars (Stmt l) where
               (s', RecStmt l stmts')
               where   (s', stmts') = addVars s stmts
 
-instance (Data l, Observable l, Ord l, Show l) => AddVars (Binds l) where
+instance AddVars (Binds S) where
   addVars s (BDecls l decls) = BDecls l <$> addVars s decls
   addVars s it@IPBinds{}     = (s, it)
