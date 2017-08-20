@@ -228,4 +228,6 @@ unionTuple (Tuple a) (Tuple b) = Tuple (a `Set.union` b)
 minusTuple :: Tuple -> Set (Name S) -> Tuple
 Tuple t `minusTuple` vs = Tuple (t `Set.difference` vs)
 intersectTuple :: Tuple -> Set (Name S) -> Tuple
-Tuple t `intersectTuple` vs = Tuple (t `Set.intersection` vs)
+intersectTuple = observe "intersectTuple" intersectTuple'
+intersectTuple' :: Tuple -> Set (Name S) -> Tuple
+Tuple t `intersectTuple'` vs = Tuple (t `Set.intersection` vs)
