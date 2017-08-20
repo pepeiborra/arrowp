@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor        #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE OverloadedLists      #-}
@@ -28,7 +28,7 @@ import           Debug.Hoed.Pure
 import           Language.Haskell.Exts.Bracket
 import           Language.Haskell.Exts.Syntax  hiding (Let, Tuple)
 import qualified Language.Haskell.Exts.Syntax  as H
-import           Language.Haskell.Exts.Type hiding (S)
+import           Language.Haskell.Exts.Type    hiding (S)
 import           Utils
 
 data Arrow = Arrow

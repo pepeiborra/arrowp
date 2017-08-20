@@ -8,9 +8,9 @@ module Control.Arrow.Notation
   , translateExp
   ) where
 
-import           Data.Generics
-import           Debug.Hoed.Pure       (observe)
-import           Language.Haskell.Exts as H hiding (Tuple)
+import           Data.Generics.Uniplate.Data
+import           Debug.Hoed.Pure             (observe)
+import           Language.Haskell.Exts       as H hiding (Tuple)
 
 import           ArrSyn
 import           Utils
