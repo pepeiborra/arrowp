@@ -31,8 +31,9 @@ import           Language.Haskell.Exts.Observe  ()
 
 -- | The type of src code locations used by arrowp-qq
 newtype S = S {getSrcSpanInfo :: SrcSpanInfo}
-  deriving (Data, Eq, Ord, Typeable)
-
+  deriving (Data, Typeable)
+instance Eq S where _ == _ = True
+instance Ord S where compare _ _ = EQ
 instance Show S where show _ = "<loc>"
 
 instance Default S where
