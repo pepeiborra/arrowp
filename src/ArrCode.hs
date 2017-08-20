@@ -193,7 +193,7 @@ toHaskell = rebracket1 . toHaskellCode . code
         comp f = InfixApp def f compose_op
     toHaskellCode (Op op as) = foldl (App def) op (map (Paren def . toHaskellCode) as)
     toHaskellCode (InfixOp a1 op a2) =
-      InfixApp def (Paren def $ toHaskellArg a1) op (Paren def $ toHaskellArg a2)
+      InfixApp def (toHaskellArg a1) op (toHaskellArg a2)
     toHaskellCode (Let nas a) =
       H.Let def (BDecls def $ map toHaskellDecl nas) (toHaskellCode a)
       where
@@ -201,7 +201,7 @@ toHaskell = rebracket1 . toHaskellCode . code
           PatBind def (PVar def n) (UnGuardedRhs def (toHaskellCode a)) Nothing
     toHaskellCode (Ifte cond th el) = If def cond (toHaskellCode th) (toHaskellCode el)
 
-    toHaskellArg = toHaskellCode
+    toHaskellArg = Paren def . toHaskellCode
 
 newtype Tuple = Tuple (Set (Name S))
   deriving (Eq,Generic,Show)

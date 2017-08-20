@@ -97,8 +97,8 @@ pairP :: Pat S -> Pat S -> Pat S
 pairP p1 p2 = PTuple (ann p1) Boxed [hidePat (definedVars p2) p1, p2]
 
 left, right :: Exp S -> Exp S
-left x = App (ann x) left_exp x
-right x = App (ann x) right_exp x
+left  x = App (ann x) left_exp  (Paren def x)
+right x = App (ann x) right_exp (Paren def x)
 
 returnCmd :: Exp S -> Exp S
 returnCmd x = LeftArrApp (ann x) returnA_exp x

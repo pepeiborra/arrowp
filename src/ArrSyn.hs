@@ -23,7 +23,7 @@ import           Debug.Hoed.Pure
 import           Language.Haskell.Exts      (Alt (..), Binds (..), Decl (..),
                                              Exp (), GuardedRhs (..),
                                              Match (..), Name, Pat (..),
-                                             Rhs (..), Stmt (..))
+                                             Rhs (..), Stmt (..), ann)
 import           Language.Haskell.Exts.Type hiding (S)
 
 import qualified Language.Haskell.Exts      as H
@@ -37,7 +37,7 @@ import qualified Language.Haskell.Exts      as H
 -- - toHaskell turns that into Haskell.
 
 translate :: Pat S -> Exp S -> Exp S
-translate p c = toHaskell (transCmd s p' c)
+translate p c = H.Paren (ann c) $ toHaskell (transCmd s p' c)
       where   (s, p') = startPattern p
 
 startPattern :: Pat S -> (TransState, Pat S)
