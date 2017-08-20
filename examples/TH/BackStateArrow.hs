@@ -1,10 +1,10 @@
-{-# LANGUAGE QuasiQuotes#-}
-module BackStateArrow where
+{-# LANGUAGE QuasiQuotes #-}
+module TH.BackstateArrow where
 
-import Control.Arrow
-import Control.Arrow.QuasiQuoter
-import Control.Category
-import Prelude hiding (id, (.))
+import           Control.Arrow
+import           Control.Arrow.QuasiQuoter
+import           Control.Category
+import           Prelude                   hiding (id, (.))
 
 -- Generalizing the backwards state transformer monad mentioned
 -- in Wadler's "The Essence of Functional Programming"

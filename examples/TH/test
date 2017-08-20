@@ -1,0 +1,30 @@
+module Egs where
+import Control.Arrow
+
+addA :: Arrow a => a b Int -> a b Int -> a b Int
+addA f g
+  = Control.Arrow.arr (\ x -> ((x), (x))) Control.Arrow.>>>
+      Control.Arrow.first
+        (Control.Arrow.arr (\ (x) -> x) Control.Arrow.>>> f)
+        Control.Arrow.>>> Control.Arrow.arr (\ (y, (x)) -> ((x), (y)))
+        Control.Arrow.>>>
+        Control.Arrow.first
+          (Control.Arrow.arr (\ (x) -> x) Control.Arrow.>>> g)
+          Control.Arrow.>>> Control.Arrow.arr (\ (z, (y)) -> y + z)
+          Control.Arrow.>>> returnA
+
+while :: ArrowChoice a => a b Bool -> a b () -> a b ()
+while p s
+  = Control.Arrow.arr (\ x -> ((x), (x))) Control.Arrow.>>>
+      Control.Arrow.first
+        (Control.Arrow.arr (\ (x) -> x) Control.Arrow.>>> p)
+        Control.Arrow.>>>
+        Control.Arrow.arr
+          (\ (b, (x)) ->
+             if b then Control.Arrow.left (x) else Control.Arrow.right ())
+        Control.Arrow.>>>
+        Control.Arrow.arr (\ (x) -> x) Control.Arrow.>>>
+          s Control.Arrow.>>> Control.Arrow.arr (\ (x) -> x)
+            Control.Arrow.>>> while p s
+          Control.Arrow.|||
+          Control.Arrow.arr (\ () -> ()) Control.Arrow.>>> returnA

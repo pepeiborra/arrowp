@@ -1,0 +1,23 @@
+Miscellaneous examples of arrow notation adapted from the arrowp package.
+The starred ones also require the arrow transformer library:
+
+cgi
+	Translation of John Hughes's simplified account of his CGI library.
+	(Typechecks, but doesn't do anything.)
+
+circuit *
+	More circuit examples, and another circuit arrow type.
+
+parser *
+	Arrow-ized cut-down version of the LL(1) parser combinators
+	described in "Deterministic, Error-Correcting Combinator Parsers",
+	by Swierstra and Duponcheel.  This version uses statically
+	constructed parse tables, but doesn't do error correction.
+
+powertrees
+	An arrow for uniform algorithms over perfectly balanced binary
+	trees, which can express many hardware algorithms and data-parallel
+	algorithms.
+
+small
+	Miscellaneous small examples.

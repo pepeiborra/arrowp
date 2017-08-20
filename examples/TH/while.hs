@@ -1,8 +1,8 @@
 {-# LANGUAGE QuasiQuotes #-}
-module Egs where
+module TH.While where
 
-import Control.Arrow
-import Control.Arrow.QuasiQuoter
+import           Control.Arrow
+import           Control.Arrow.QuasiQuoter
 
 addA :: Arrow a => a b Int -> a b Int -> a b Int
 addA f g = [proc| x -> do
