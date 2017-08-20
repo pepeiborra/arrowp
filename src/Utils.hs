@@ -158,7 +158,7 @@ instance {-# OVERLAPS #-} Observable (QName S) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable [Stmt S] where
   observer lit cxt =
-    seq lit $ send (intercalate ";" $ fmap prettyPrint lit) (return lit) cxt
+    seq lit $ send (bracket $ intercalate ";" $ fmap prettyPrint lit) (return lit) cxt
 instance {-# OVERLAPS #-} Observable (Stmt S) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (Pat S) where
@@ -174,9 +174,11 @@ instance {-# OVERLAPS #-} Observable (Alt S) where
 instance {-# OVERLAPS #-} Observable (Set (Name S)) where
   constrain = constrainBase
   observer x cxt =
-    seq x $ send (bracket $ intercalate "," $ prettyPrint <$> map void (Set.toList x)) (return x) cxt
+    seq x $ send (between "[" "]"$ intercalate "," $ prettyPrint <$> map void (Set.toList x)) (return x) cxt
 
-observePretty lit cxt = seq lit $ send (prettyPrint lit) (return lit) cxt
+observePretty lit cxt =
+  seq lit $ send (between "<" ">" $ prettyPrint lit) (return lit) cxt
 
 bracket :: [Char] -> [Char]
-bracket s = '[' : s ++ "]"
+between open  close s = open ++ s ++ close
+bracket = between "[" "]"
