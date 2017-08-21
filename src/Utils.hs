@@ -10,6 +10,8 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing -Wno-orphans #-}
 module Utils
   ( module Utils
+  , HSE.Located(..)
+  , HSE.rebracket1
   )where
 
 import           Control.Monad
@@ -19,14 +21,14 @@ import           Data.Default
 import           Data.Functor.Identity
 import           Data.Generics.Uniplate.Data
 import           Data.List
-import           Data.Map                       (Map)
-import           Data.Set                       (Set)
-import qualified Data.Set                       as Set
-import           Debug.Hoed.Pure                hiding (Module)
+import           Data.Map                      (Map)
+import           Data.Set                      (Set)
+import qualified Data.Set                      as Set
+import           Debug.Hoed.Pure               hiding (Module)
 import           Language.Haskell.Exts
-import qualified Language.Haskell.Exts.FreeVars as HSE
+import qualified Language.Haskell.Exts.Util    as HSE
 #ifdef DEBUG
-import           Language.Haskell.Exts.Observe  ()
+import           Language.Haskell.Exts.Observe ()
 #endif
 
 -- | The type of src code locations used by arrowp-qq
@@ -44,19 +46,19 @@ instance Observable S where
   constrain = constrainBase
 
 freeVars
-  :: (Observable a, HSE.FreeVars a, S ~ HSE.SrcLocType a)
+  :: (Observable a, HSE.FreeVars a, S ~ HSE.LocType a)
   => a -> Set (Name S)
 freeVars = observe "freeVars" HSE.freeVars
 
 freeVarss
-  :: (Observable a, HSE.AllVars a, S ~ HSE.SrcLocType a)
+  :: (Observable a, HSE.AllVars a, S ~ HSE.LocType a)
   => a -> Set (Name S)
-freeVarss = observe "freeVarss" HSE.varss
+freeVarss = observe "freeVarss" (HSE.free . HSE.allVars)
 
 definedVars
-  :: (Observable a, HSE.AllVars a, S ~ HSE.SrcLocType a)
+  :: (Observable a, HSE.AllVars a, S ~ HSE.LocType a)
   => a -> Set (Name S)
-definedVars = observe "definedVars" HSE.pvars
+definedVars = observe "definedVars" (HSE.bound . HSE.allVars)
 
 -- | Are a tuple pattern and an expression tuple equal ?
 same :: Pat S -> Exp S -> Bool

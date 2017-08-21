@@ -24,7 +24,6 @@ import           Language.Haskell.Exts      (Alt (..), Binds (..), Decl (..),
                                              Exp (), GuardedRhs (..),
                                              Match (..), Name, Pat (..),
                                              Rhs (..), Stmt (..), ann)
-import           Language.Haskell.Exts.Type hiding (S)
 
 import qualified Language.Haskell.Exts      as H
 
@@ -201,7 +200,7 @@ input :: TransState -> Tuple
 input s = Tuple (locals s)
 
 addVars'
-  :: (Observable a, AddVars a, Eq l, Show l, l ~ SrcLocType a)
+  :: (Observable a, AddVars a, Eq l, Show l, l ~ LocType a)
   => TransState -> a -> (TransState, a)
 addVars' = observe "addVars" addVars
 

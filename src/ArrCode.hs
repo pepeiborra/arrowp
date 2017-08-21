@@ -22,13 +22,11 @@ module ArrCode (
       ifte, app, loop, returnA
       ) where
 import           Data.Default
-import           Data.Set                      (Set)
-import qualified Data.Set                      as Set
+import           Data.Set                     (Set)
+import qualified Data.Set                     as Set
 import           Debug.Hoed.Pure
-import           Language.Haskell.Exts.Bracket
-import           Language.Haskell.Exts.Syntax  hiding (Let, Tuple)
-import qualified Language.Haskell.Exts.Syntax  as H
-import           Language.Haskell.Exts.Type    hiding (S)
+import           Language.Haskell.Exts.Syntax hiding (Let, Tuple)
+import qualified Language.Haskell.Exts.Syntax as H
 import           Utils
 
 data Arrow = Arrow
@@ -38,13 +36,19 @@ data Arrow = Arrow
   }
   deriving (Eq, Generic, Show)
 
-instance HasSrcLoc Arrow  where
-  type SrcLocType Arrow = S
+instance Located Arrow  where
+  type LocType Arrow = S
+  location f (Arrow context anon code)=
+    Arrow <$> location f context <*> pure anon <*> location f code
 
 instance Observable Arrow
 
 data VarDecl a = VarDecl (Name S) a
       deriving (Functor, Generic)
+
+instance (Located a, LocType a ~ S) => Located (VarDecl a) where
+  type LocType (VarDecl a) = S
+  location f (VarDecl n a) = VarDecl <$> location f n <*> location f a
 
 -- required Undecidable instances
 deriving instance (Eq a) => Eq (VarDecl a)
@@ -62,14 +66,28 @@ data Code
       | Ifte (Exp S) Code Code
   deriving (Eq, Generic, Show)
 
-instance HasSrcLoc Code where
-  type SrcLocType Code = S
+instance Located Code where
+  type LocType Code = S
+  location _ ReturnA = pure ReturnA
+  location f (Arr i pat bb e) =
+    Arr i <$> location f pat <*> location f bb <*> location f e
+  location f (Compose c1 cc c2) =
+    Compose <$> location f c1 <*> location f cc <*> location f c2
+  location f (Op e cc) = Op <$> location f e <*> location f cc
+  location f (InfixOp c qop c') = InfixOp <$> location f c <*> location f qop <*> location f c'
+  location f (Let vv c) = Let <$> location f vv <*> location f c
+  location f (Ifte e c1 c2) = Ifte <$> location f e <*> location f c1 <*> location f c2
 
 instance Observable Code
 
 data Binding = BindLet (Binds S) | BindCase (Pat S) (Exp S)
   deriving (Eq,Generic, Show)
 instance Observable Binding
+
+instance Located Binding where
+  type LocType Binding = S
+  location f (BindLet b) = BindLet <$> location f b
+  location f (BindCase p e) = BindCase <$> location f p <*> location f e
 
 loop :: Arrow -> Arrow
 loop f = applyOp loop_exp [f]
@@ -206,6 +224,10 @@ toHaskell = rebracket1 . toHaskellCode . code
 newtype Tuple = Tuple (Set (Name S))
   deriving (Eq,Generic,Show)
 instance Observable Tuple
+
+instance Located Tuple where
+  type LocType Tuple = S
+  location f (Tuple names) = Tuple <$> location f names
 
 isEmptyTuple :: Tuple -> Bool
 isEmptyTuple (Tuple t) = Set.null t
