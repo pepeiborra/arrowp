@@ -2,12 +2,9 @@ flags: {}
 extra-package-dbs: []
 extra-deps:
 - NoHoed-0.1.0
+- haskell-src-exts-util-0.1.0
 packages:
 - .
-- location: 
-    git: http://github.com/pepeiborra/haskell-src-exts-util.git
-    commit: 5cf63e8db847246477e88f59d486ae1b0698fe07
-  extra-dep: true
 
 resolver: nightly-2017-08-17
 ghc-options:
