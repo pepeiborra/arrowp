@@ -9,9 +9,29 @@
 {-# LANGUAGE TypeFamilies        #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -Wno-orphans #-}
 module Utils
-  ( module Utils
-  , HSE.Located(..)
+  ( HSE.Located(..)
+  , S(..)
   , HSE.rebracket1
+  , freeVars
+  , freeVarss
+  , definedVars
+  , hidePat
+  , irrPat
+  , left, right
+  , pair
+  , pairP
+  , same
+  , times
+  , app_exp
+  , arr_exp
+  , first_exp
+  , left_exp, right_exp
+  , loop_exp
+  , returnA_exp
+  , choice_op
+  , compose_op
+  , returnCmd
+  , observeSt
   )where
 
 import           Control.Monad

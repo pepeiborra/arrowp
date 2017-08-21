@@ -8,19 +8,39 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-module ArrCode (
-      Arrow,
-      bind, anon,
-      arr, arrLet, (>>>), arrowExp, applyOp, infixOp, (|||), first,
-      VarDecl(VarDecl), letCmd,
-      context, anonArgs, toHaskell,
-      Tuple(..),
-      isEmptyTuple, unionTuple, minusTuple, intersectTuple,
-      patternTuple, expTuple,
-      returnA_exp, arr_exp, compose_op, choice_op, first_exp,
-      left_exp, right_exp, app_exp, loop_exp,
-      ifte, app, loop, returnA
-      ) where
+module ArrCode
+  ( Arrow
+  , bind
+  , anon
+  , arr
+  , arrLet
+  , (>>>)
+  , arrowExp
+  , infixOp
+  , (|||)
+  , first
+  , VarDecl
+  , context
+  , anonArgs
+  , toHaskell
+  , Tuple(..)
+  , isEmptyTuple
+  , intersectTuple
+  , patternTuple
+  , expTuple
+  , returnA_exp
+  , arr_exp
+  , compose_op
+  , choice_op
+  , first_exp
+  , left_exp
+  , right_exp
+  , app_exp
+  , loop_exp
+  , ifte
+  , app
+  , loop
+  ) where
 import           Data.Default
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
@@ -92,9 +112,8 @@ instance Located Binding where
 loop :: Arrow -> Arrow
 loop f = applyOp loop_exp [f]
 
-app, returnA :: Arrow
+app :: Arrow
 app = arrowExp app_exp
-returnA = arrowExp returnA_exp
 
 bind :: Set (Name S) -> Arrow -> Arrow
 bind = observe "bind" $ \vars a -> a {context = context a `minusTuple` vars}
@@ -168,13 +187,6 @@ a1 ||| a2 =
   { code = InfixOp (code a1) choice_op (code a2)
   , context = context a1 `unionTuple` context a2
   , anonArgs = 0
-  }
-letCmd :: [VarDecl Arrow] -> Arrow -> Arrow
-letCmd defs a =
-  Arrow
-  { code = Let (map (fmap code) defs) (code a)
-  , context = context a
-  , anonArgs = anonArgs a
   }
 
 compose :: Code -> Code -> Code

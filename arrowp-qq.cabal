@@ -31,13 +31,11 @@ Library
                          Control.Arrow.Notation,
                          Control.Arrow.QuasiQuoter
     Build-Depends: base < 5,
-                   array,
                    containers,
                    data-default,
                    haskell-src-exts,
                    haskell-src-exts-util,
                    haskell-src-meta,
-                   syb,
                    template-haskell < 2.13, 
                    transformers,
                    uniplate
