@@ -15,7 +15,6 @@ module Utils
   , freeVars
   , freeVarss
   , definedVars
-  , hidePat
   , irrPat
   , left, right
   , pair
@@ -25,7 +24,6 @@ module Utils
   , app_exp
   , arr_exp
   , first_exp
-  , left_exp, right_exp
   , loop_exp
   , returnA_exp
   , choice_op

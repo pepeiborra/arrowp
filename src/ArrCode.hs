@@ -19,7 +19,6 @@ module ArrCode
   , infixOp
   , (|||)
   , first
-  , VarDecl
   , context
   , anonArgs
   , toHaskell
@@ -28,15 +27,6 @@ module ArrCode
   , intersectTuple
   , patternTuple
   , expTuple
-  , returnA_exp
-  , arr_exp
-  , compose_op
-  , choice_op
-  , first_exp
-  , left_exp
-  , right_exp
-  , app_exp
-  , loop_exp
   , ifte
   , app
   , loop
