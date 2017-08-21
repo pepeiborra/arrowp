@@ -1,7 +1,8 @@
 [![Hackage](https://img.shields.io/hackage/v/arrowp-qq.svg)](https://hackage.haskell.org/package/arrowp-qq)
 [![Stackage Nightly](http://stackage.org/package/arrowp-qq/badge/nightly)](http://stackage.org/nightly/package/arrowp-qq)
 [![Travis Build Status](https://travis-ci.org/pepeiborra/arrowp-qq.svg)](https://travis-ci.org/pepeiborra/arrowp-qq)
-ARROWP-QQ
+
+Arrowp-qq
 ==========
 A preprocessor for arrow notation packaged by Jose Iborra,
 based on the arrowp preprocessor developed by Ross Paterson <ross@soi.city.ac.uk>.
