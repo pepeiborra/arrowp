@@ -39,9 +39,62 @@ addA f g = [proc| x -> do
 		returnA -< y + z |]
 ```
 
-USING THE **arrowp-ext** PREPROCESSOR
+Using the **arrowp-ext** preprocessor
 ---------------------------------
 
 ```
 {-# OPTIONS -F -pgmF arrowp-ext #-}
+```
+
+Comparison with **arrowp**
+-----------------------
+**arrowp-qq** extends the original **arrowp** in three dimensions:
+1. It replaces the `haskell-src` based parser with one based on `haskell-src-exts`, which handles most of GHC 8.0.2 Haskell syntax.
+2. It provides not only a preprocessor but also a quasiquoter, which is a better option in certain cases.
+3. It extends the desugaring to handle static conditional expressions (currently only if-then-else). Example:
+```
+proc inputs -> do
+  results <- processor -< inputs
+  if outputResultsArg
+    then outputSink -< results
+    else returnA -< ()
+  returnA -< results
+```
+The standard **arrowp** (and GHC) desugaring for this code is:
+```
+  = ((processor >>> arr (\ results -> (results, results))) >>>
+       (first
+          (arr
+             (\ results -> if outputResultsArg then Left results else Right ())
+             >>> (outputSink ||| returnA))
+          >>> arr (\ (_, results) -> results)))
+```
+This requires an `ArrowChoice`, but there is a more efficient desugaring which 
+performs the choice at compile time and thus an `Arrow` suffices:
+```
+((processor >>> arr (\ results -> (results, results))) >>>
+       (first
+          (if outputResultsArg then outputSink else arr (\ results -> ()))
+          >>> arr (\ (_, results) -> results)))
+```
+
+Comparison with **GHC**
+-----------------------
+The GHC desugarer does not do a very good job of minimizing the number of
+`first` calls inserted. In certain `Arrow` instances, this can have a material effect
+on performance. Example:
+```
+trivial = proc inputs -> do
+   chunked <- chunk -< inputs
+   results <- process -< chunked
+   returnA -< results
+```
+This code ought to desugar to a chain of arrows, and indeed, both arrowp and
+arrowp-qq desugar this to:
+```
+trivial = chunk >>> process
+```
+However GHC will produce (approximately) the following code:
+```
+  arr(\inputs -> (inputs,inputs)) >>> first chunk >>> first process >>> arr fst
 ```
