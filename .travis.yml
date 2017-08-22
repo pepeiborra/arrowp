@@ -37,5 +37,11 @@ install:
 - stack --no-terminal --install-ghc test --only-dependencies
 
 script:
+# Build the package
+- stack --no-terminal build --haddock --no-haddock-deps
+
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --haddock --no-haddock-deps
+- STACK_YAML=stack-test.yaml stack --no-terminal test --haddock --no-haddock-deps
+
+# Build the package in debug mode
+- STACK_YAML=stack-debug.yaml stack build
