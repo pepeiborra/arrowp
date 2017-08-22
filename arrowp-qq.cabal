@@ -46,7 +46,7 @@ Library
        Build-Depends:       NoHoed
 
     Hs-Source-Dirs: src
-    Other-Modules:  ArrCode ArrSyn Utils
+    Other-Modules:  ArrCode ArrSyn NewCode SrcLocs Utils
     Default-Language:    Haskell2010
 
 executable arrowp-ext

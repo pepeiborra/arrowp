@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP                 #-}
-{-# LANGUAGE DeriveDataTypeable  #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE OverloadedLists     #-}
@@ -30,11 +29,11 @@ module Utils
   , compose_op
   , returnCmd
   , observeSt
+  , (<$$>)
   )where
 
 import           Control.Monad
 import           Control.Monad.Trans.State
-import           Data.Data
 import           Data.Default
 import           Data.Functor.Identity
 import           Data.Generics.Uniplate.Data
@@ -48,41 +47,41 @@ import qualified Language.Haskell.Exts.Util    as HSE
 #ifdef DEBUG
 import           Language.Haskell.Exts.Observe ()
 #endif
-
--- | The type of src code locations used by arrowp-qq
-newtype S = S {getSrcSpanInfo :: SrcSpanInfo}
-  deriving (Data, Typeable)
-instance Eq S where _ == _ = True
-instance Ord S where compare _ _ = EQ
-instance Show S where show _ = "<loc>"
-
-instance Default S where
-  def = S noSrcSpan
-
-instance Observable S where
-  observer = observeOpaque "<loc>"
-  constrain = constrainBase
+import SrcLocs
+import NewCode
 
 freeVars
-  :: (Observable a, HSE.FreeVars a, S ~ HSE.LocType a)
-  => a -> Set (Name S)
+  :: ( Observable a
+     , Observable (Set (Name code))
+     , HSE.FreeVars a
+     , code ~ HSE.LocType a
+     )
+  => a -> Set (Name code)
 freeVars = observe "freeVars" HSE.freeVars
 
 freeVarss
-  :: (Observable a, HSE.AllVars a, S ~ HSE.LocType a)
-  => a -> Set (Name S)
+  :: ( Observable a
+     , Observable (Set (Name code))
+     , HSE.AllVars a
+     , code ~ HSE.LocType a
+     )
+  => a -> Set (Name code)
 freeVarss = observe "freeVarss" (HSE.free . HSE.allVars)
 
 definedVars
-  :: (Observable a, HSE.AllVars a, S ~ HSE.LocType a)
-  => a -> Set (Name S)
+  :: ( Observable a
+     , Observable (Set (Name code))
+     , HSE.AllVars a
+     , code ~ HSE.LocType a
+     )
+  => a -> Set (Name code)
 definedVars = observe "definedVars" (HSE.bound . HSE.allVars)
 
 -- | Are a tuple pattern and an expression tuple equal ?
-same :: Pat S -> Exp S -> Bool
+same :: (Eq s, Observable(Exp s), Observable(Pat s)) => Pat s -> Exp s -> Bool
 same = observe "same" same'
 
-same' :: Pat S -> Exp S -> Bool
+same' :: (Eq s, Observable(Exp s), Observable(Pat s)) => Pat s -> Exp s -> Bool
 same' (PApp _ n1 []) (Con _ n2) = n1 == n2
 same' (PVar l n1) (Var _ n2) = UnQual l n1 == n2
 same' (PTuple _ Boxed []) y = same (PApp (ann y) (unit_con_name (ann y)) []) y
@@ -110,27 +109,27 @@ hidePat vs = transform (go vs) where
     | n `Set.member` vs = go vs p
   go _ x = x
 
-pair :: Exp S -> Exp S -> Exp S
+pair :: Exp code -> Exp code -> Exp code
 pair e1 e2 = Tuple (ann e1) Boxed [e1, e2]
 
 pairP :: Pat S -> Pat S -> Pat S
 pairP p1 p2 = PTuple (ann p1) Boxed [hidePat (definedVars p2) p1, p2]
 
-left, right :: Exp S -> Exp S
+left, right :: Default code => Exp code -> Exp code
 left  x = App (ann x) left_exp  (Paren def x)
 right x = App (ann x) right_exp (Paren def x)
 
-returnCmd :: Exp S -> Exp S
+returnCmd :: Default code => Exp code -> Exp code
 returnCmd x = LeftArrApp (ann x) returnA_exp x
 
-compose_op, choice_op :: QOp S
-returnA_exp, arr_exp, first_exp :: Exp S
-left_exp, right_exp, app_exp, loop_exp :: Exp S
-unqualId :: String -> Exp S
+compose_op, choice_op :: Default s => QOp s
+returnA_exp, arr_exp, first_exp :: Default s => Exp s
+left_exp, right_exp, app_exp, loop_exp :: Default s => Exp s
+unqualId :: Default s => String -> Exp s
 unqualId   id = Var def $ UnQual def (Ident def id)
-unqualOp :: String -> QOp S
+unqualOp :: Default s => String -> QOp s
 unqualOp id = QVarOp def $ UnQual def (Symbol def id)
-unqualCon :: String -> Exp S
+unqualCon :: Default s => String -> Exp s
 unqualCon  id = Con def $ UnQual def (Symbol def id)
 arr_exp       = unqualId "arr"
 compose_op    = unqualOp ">>>"
@@ -171,7 +170,7 @@ instance (Eq a, Eq k, Show a, Show k) => Observable (Map k a) where
   observer = observeBase
 
 -- Override some AST instances for comprehension
-instance {-# OVERLAPS #-} Observable (Exp S) where
+instance {-# OVERLAPS #-} Observable (Exp Code) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (Name S) where
   observer = observePretty
@@ -182,7 +181,7 @@ instance {-# OVERLAPS #-} Observable [Stmt S] where
     seq lit $ send (bracket $ intercalate ";" $ fmap prettyPrint lit) (return lit) cxt
 instance {-# OVERLAPS #-} Observable (Stmt S) where
   observer = observePretty
-instance {-# OVERLAPS #-} Observable (Pat S) where
+instance {-# OVERLAPS #-} Observable (Pat Code) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (QOp S) where
   observer = observePretty
@@ -203,3 +202,6 @@ observePretty lit cxt =
 bracket :: [Char] -> [Char]
 between open  close s = open ++ s ++ close
 bracket = between "[" "]"
+
+(<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+(<$$>) f = fmap (fmap f)

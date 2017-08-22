@@ -35,69 +35,24 @@ import           Data.Default
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
 import           Debug.Hoed.Pure
-import           Language.Haskell.Exts.Syntax hiding (Let, Tuple)
+import           Language.Haskell.Exts.Syntax hiding (Tuple)
 import qualified Language.Haskell.Exts.Syntax as H
+import           NewCode
 import           Utils
 
 data Arrow = Arrow
   { context  :: Tuple -- named input components used by the arrow
   , anonArgs :: Int     -- number of unnamed arguments
-  , code     :: Code
+  , code     :: Exp Code
   }
   deriving (Eq, Generic, Show)
 
 instance Located Arrow  where
-  type LocType Arrow = S
+  type LocType Arrow = Code
   location f (Arrow context anon code)=
-    Arrow <$> location f context <*> pure anon <*> location f code
+    Arrow context anon <$> location f code
 
 instance Observable Arrow
-
-data VarDecl a = VarDecl (Name S) a
-      deriving (Functor, Generic)
-
-instance (Located a, LocType a ~ S) => Located (VarDecl a) where
-  type LocType (VarDecl a) = S
-  location f (VarDecl n a) = VarDecl <$> location f n <*> location f a
-
--- required Undecidable instances
-deriving instance (Eq a) => Eq (VarDecl a)
-deriving instance (Show a) => Show (VarDecl a)
-
-instance Observable a => Observable (VarDecl a)
-
-data Code
-      = ReturnA                       -- returnA = arr id
-      | Arr Int (Pat S) [Binding] (Exp S)   -- arr (first^n (\p -> ... e))
-      | Compose Code [Code] Code  -- composition of 2 or more elts
-      | Op (Exp S) [Code]         -- combinator applied to arrows
-      | InfixOp Code (QOp S) Code
-      | Let [VarDecl Code] Code
-      | Ifte (Exp S) Code Code
-  deriving (Eq, Generic, Show)
-
-instance Located Code where
-  type LocType Code = S
-  location _ ReturnA = pure ReturnA
-  location f (Arr i pat bb e) =
-    Arr i <$> location f pat <*> location f bb <*> location f e
-  location f (Compose c1 cc c2) =
-    Compose <$> location f c1 <*> location f cc <*> location f c2
-  location f (Op e cc) = Op <$> location f e <*> location f cc
-  location f (InfixOp c qop c') = InfixOp <$> location f c <*> location f qop <*> location f c'
-  location f (Let vv c) = Let <$> location f vv <*> location f c
-  location f (Ifte e c1 c2) = Ifte <$> location f e <*> location f c1 <*> location f c2
-
-instance Observable Code
-
-data Binding = BindLet (Binds S) | BindCase (Pat S) (Exp S)
-  deriving (Eq,Generic, Show)
-instance Observable Binding
-
-instance Located Binding where
-  type LocType Binding = S
-  location f (BindLet b) = BindLet <$> location f b
-  location f (BindCase p e) = BindCase <$> location f p <*> location f e
 
 loop :: Arrow -> Arrow
 loop f = applyOp loop_exp [f]
@@ -116,14 +71,14 @@ arr = observe "arr" $ \anons t p e ->
   { code =
       if same p e
         then ReturnA
-        else Arr anons p [] e
+        else Arr anons (Loc <$> p) [] (Loc <$> e)
   , context = t `intersectTuple` freeVars e
   , anonArgs = anons
   }
 arrLet :: Int -> Tuple -> Pat S -> Binds S -> Exp S -> Arrow
 arrLet anons t p ds e =
   Arrow
-  { code = Arr anons p [BindLet ds] e
+  { code = Arr anons (Loc <$> p) [BindLet (Loc <$> ds)] (Loc <$> e)
   , context = t `intersectTuple` vs
   , anonArgs = anons
   }
@@ -133,7 +88,7 @@ arrLet anons t p ds e =
 ifte :: Exp S -> Arrow -> Arrow -> Arrow
 ifte c th el =
   Arrow
-  { code = Ifte c (code th) (code el)
+  { code = If (Loc$ ann c) (Loc <$> c) (code th) (code el)
   , context = context th `unionTuple` context el
   , anonArgs = 0
   }
@@ -145,14 +100,14 @@ arrowExp e =
   { code =
       if e == returnA_exp
         then ReturnA
-        else Op e []
+        else Op (Loc <$> e) []
   , context = emptyTuple
   , anonArgs = 0
   }
 applyOp :: Exp S -> [Arrow] -> Arrow
 applyOp e as =
   Arrow
-  { code = Op e (map code as)
+  { code = Op (Loc <$> e) (map code as)
   , context = foldr (unionTuple . context) emptyTuple as
   , anonArgs = 0 -- BUG: see below
   }
@@ -160,7 +115,7 @@ applyOp e as =
 infixOp :: Arrow -> QOp S -> Arrow -> Arrow
 infixOp a1 op a2 =
   Arrow
-  { code = InfixOp (code a1) op (code a2)
+  { code = InfixApp def (code a1) (Loc <$> op) (code a2)
   , context = context a1 `unionTuple` context a2
   , anonArgs = 0 -- BUG: as above
   }
@@ -174,15 +129,15 @@ first a ps =
 (|||) :: Arrow -> Arrow -> Arrow
 a1 ||| a2 =
   Arrow
-  { code = InfixOp (code a1) choice_op (code a2)
+  { code = InfixApp def (code a1) (choice_op) (code a2)
   , context = context a1 `unionTuple` context a2
   , anonArgs = 0
   }
 
-compose :: Code -> Code -> Code
+compose :: Exp Code -> Exp Code -> Exp Code
 compose = observe "compose" compose'
 
-compose' :: Code -> Code -> Code
+compose' :: Exp Code -> Exp Code -> Exp Code
 compose' ReturnA a = a
 compose' a ReturnA = a
 compose' a1@(Arr n1 p1 ds1 e1) a2@(Arr n2 p2 ds2 e2)
@@ -198,29 +153,29 @@ compose' a1 a2 = Compose a1 [] a2
 toHaskell :: Arrow -> Exp S
 toHaskell = rebracket1 . toHaskellCode . code
   where
-    toHaskellCode :: Code -> Exp S
+    toHaskellCode :: Exp Code -> Exp S
     toHaskellCode ReturnA = returnA_exp
     toHaskellCode (Arr n p bs e) =
       App def arr_exp (times n (Paren def . App def first_exp) body)
       where
-        body = Lambda def [p] (foldr addBinding e bs)
-        addBinding (BindLet ds) e = H.Let def ds e
+        body :: Exp S
+        body = Lambda def [getS <$> p] (foldr addBinding (getS <$> e) bs)
+        addBinding :: Binding -> Exp S -> Exp S
+        addBinding (BindLet ds) e = H.Let def (getS <$> ds) e
         addBinding (BindCase p e) e' =
-          Case def e [Alt def p (UnGuardedRhs def e') Nothing]
+          Case def (getS <$> e) [Alt def (getS <$> p) (UnGuardedRhs def e') Nothing]
     toHaskellCode (Compose f as g) =
       foldr (comp . toHaskellArg) (toHaskellArg g) (f : as)
       where
         comp f = InfixApp def f compose_op
-    toHaskellCode (Op op as) = foldl (App def) op (map (Paren def . toHaskellCode) as)
-    toHaskellCode (InfixOp a1 op a2) =
-      InfixApp def (toHaskellArg a1) op (toHaskellArg a2)
-    toHaskellCode (Let nas a) =
-      H.Let def (BDecls def $ map toHaskellDecl nas) (toHaskellCode a)
-      where
-        toHaskellDecl (VarDecl n a) =
-          PatBind def (PVar def n) (UnGuardedRhs def (toHaskellCode a)) Nothing
-    toHaskellCode (Ifte cond th el) = If def cond (toHaskellCode th) (toHaskellCode el)
-
+    toHaskellCode (Op op as) =
+      foldl (App def) (getS <$> op) (map (Paren def . toHaskellCode) as)
+    toHaskellCode (InfixApp (Loc l) a1 op a2) =
+      InfixApp l (toHaskellArg a1) (getS <$> op) (toHaskellArg a2)
+    toHaskellCode (Let (Loc l) bb a) =
+      H.Let l (getS <$> bb) (toHaskellCode a)
+    toHaskellCode (If (Loc l) cond th el) =
+      If l (getS <$> cond) (toHaskellCode th) (toHaskellCode el)
     toHaskellArg = Paren def . toHaskellCode
 
 newtype Tuple = Tuple (Set (Name S))
