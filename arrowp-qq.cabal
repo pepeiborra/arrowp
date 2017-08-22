@@ -89,8 +89,10 @@ test-suite examples
                        Egs,
                        Eval,
                        Eval1,
+                       GHC, 
                        Lift,
                        ListOps,
+                       Static,
                        TH.TH,
                        TH.While,
                        TH.BackStateArrow
