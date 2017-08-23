@@ -76,7 +76,7 @@ test-suite examples
                  examples,
                  examples/cgi,
                  examples/circuits,
-                 examples/Parser,
+                 examples/parser,
                  examples/powertrees,
                  examples/small
   main-is:             Main.hs
