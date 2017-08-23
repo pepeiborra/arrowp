@@ -37,8 +37,8 @@ install:
 - stack --no-terminal --install-ghc test --only-dependencies
 
 script:
-# Build the package
-- stack --no-terminal build --haddock --no-haddock-deps
+# Build the package ans install the arrowp-ext preprocessor (needed for tests)
+- stack --no-terminal install --haddock --no-haddock-deps
 
 # Build the package, its tests, and its docs and run the tests
 - STACK_YAML=stack-test.yaml stack --no-terminal test --haddock --no-haddock-deps
