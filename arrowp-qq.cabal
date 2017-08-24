@@ -83,7 +83,7 @@ test-suite examples
   other-modules:       
                        Parser,
                        ExprParser,
-                       BackStateArrow,
+                       BackstateArrow,
                        Conditional,
                        ListOps,
                        Egs,
@@ -95,6 +95,6 @@ test-suite examples
                        Static,
                        TH.TH,
                        TH.While,
-                       TH.BackStateArrow
+                       TH.BackstateArrow
   build-depends:
     base, arrows, arrowp-qq, template-haskell
