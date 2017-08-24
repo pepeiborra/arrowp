@@ -16,7 +16,6 @@ import           Utils
 
 import           Control.Monad.Trans.State
 import           Control.Monad.Trans.Writer
-import           Data.Generics.Uniplate.Data
 import           Data.List                  (mapAccumL)
 import           Data.Map                   (Map)
 import qualified Data.Map                   as Map
@@ -59,7 +58,7 @@ transCmd :: TransState -> Pat S -> Exp S -> Arrow
 transCmd = observe "transCmd" transCmd'
 
 transCmd' :: TransState -> Pat S -> Exp S -> Arrow
-transCmd' s p (H.LeftArrApp l f e)
+transCmd' s p (H.LeftArrApp _ f e)
       | Set.null (freeVars f `Set.intersection` locals s) =
               arr 0 (input s) p e >>> arrowExp f
       | otherwise =
@@ -67,9 +66,9 @@ transCmd' s p (H.LeftArrApp l f e)
 transCmd' s p (H.LeftArrHighApp  l f e) = transCmd s p (H.LeftArrApp l f e)
 transCmd' s p (H.RightArrApp     l f e) = transCmd s p (H.LeftArrApp l e f)
 transCmd' s p (H.RightArrHighApp l f e) = transCmd s p (H.LeftArrHighApp l e f)
-transCmd' s p (H.InfixApp l c1 op c2) =
+transCmd' s p (H.InfixApp _ c1 op c2) =
   infixOp (transCmd s p c1) op (transCmd s p c2)
-transCmd' s p (H.Let l decls c) =
+transCmd' s p (H.Let _ decls c) =
       arrLet (anonArgs a) (input s) p decls' e >>> a
       where   (s', decls') = addVars' s decls
               (e, a) = transTrimCmd s' c
@@ -129,13 +128,13 @@ transCmd' s p (H.Case l e as)
            else e)
 transCmd' s p (H.Paren _ c) =
       transCmd s p c
-transCmd' s p (H.Do l ss) =
+transCmd' s p (H.Do _ ss) =
       transDo s p (init ss) (let Qualifier _ e = last ss in e)
-transCmd' s p (H.App l c arg) =
+transCmd' s p (H.App _ c arg) =
       anon (-1) $
       arr (anonArgs a) (input s) p (pair e arg) >>> a
       where   (e, a) = transTrimCmd s c
-transCmd' s p (H.Lambda l ps c) =
+transCmd' s p (H.Lambda _ ps c) =
   anon (length ps) $ bind (definedVars ps) $ transCmd s' (foldl pairP p ps') c
   where
     (s', ps') = addVars' s ps
@@ -167,7 +166,7 @@ transDo' s p [] c =
       transCmd s p c
 transDo' s p (Qualifier l exp : ss) c =
   transDo' s p (Generator l (PWildCard l) exp : ss) c
-transDo' s p (Generator l pg cg:ss) c =
+transDo' s p (Generator _ pg cg:ss) c =
       if isEmptyTuple u then
         transCmd s p cg >>> transDo s' pg ss c
       else
