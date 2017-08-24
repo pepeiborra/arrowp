@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveFunctor        #-}
 {-# LANGUAGE DeriveGeneric        #-}
@@ -71,15 +72,15 @@ arr = observe "arr" $ \anons t p e ->
   Arrow
   { code =
       if same p e
-        then ReturnA
-        else Arr anons (Loc <$> p) [] (Loc <$> e)
+        then ReturnA (ann e)
+        else Arr (ann e) anons (Loc <$> p) [] (Loc <$> e)
   , context = t `intersectTuple` freeVars e
   , anonArgs = anons
   }
 arrLet :: Int -> Tuple -> Pat S -> Binds S -> Exp S -> Arrow
 arrLet anons t p ds e =
   Arrow
-  { code = Arr anons (Loc <$> p) [BindLet (Loc <$> ds)] (Loc <$> e)
+  { code = Arr (ann e) anons (Loc <$> p) [BindLet (Loc <$> ds)] (Loc <$> e)
   , context = t `intersectTuple` vs
   , anonArgs = anons
   }
@@ -100,7 +101,7 @@ arrowExp e =
   Arrow
   { code =
       if e == returnA_exp
-        then ReturnA
+        then ReturnA (ann e)
         else Op (Loc <$> e) []
   , context = emptyTuple
   , anonArgs = 0
@@ -139,12 +140,12 @@ compose :: Exp Code -> Exp Code -> Exp Code
 compose = observe "compose" compose'
 
 compose' :: Exp Code -> Exp Code -> Exp Code
-compose' ReturnA a = a
-compose' a ReturnA = a
-compose' a1@(Arr n1 p1 ds1 e1) a2@(Arr n2 p2 ds2 e2)
+compose' ReturnA{} a = a
+compose' a ReturnA{} = a
+compose' a1@(Arr l1 n1 p1 ds1 e1) a2@(Arr l2 n2 p2 ds2 e2)
   | n1 /= n2 = Compose a1 [] a2 -- could do better, but can this arise?
-  | same p2 e1 = Arr n1 p1 (ds1 ++ ds2) e2
-  | otherwise = Arr n1 p1 (ds1 ++ BindCase p2 e1 : ds2) e2
+  | same p2 e1 = Arr l1 n1 p1 (ds1 ++ ds2) e2
+  | otherwise = Arr l1 n1 p1 (ds1 ++ BindCase p2 e1 : ds2) e2
 compose' (Compose f1 as1 g1) (Compose f2 as2 g2) =
   Compose f1 (as1 ++ (g1 : f2 : as2)) g2
 compose' a (Compose f bs g) = Compose (compose a f) bs g
@@ -155,9 +156,9 @@ toHaskell :: Arrow -> Exp S
 toHaskell = rebracket1 . toHaskellCode . code
   where
     toHaskellCode :: Exp Code -> Exp S
-    toHaskellCode ReturnA = returnA_exp
-    toHaskellCode (Arr n p bs e) =
-      App def arr_exp (times n (Paren def . App def first_exp) body)
+    toHaskellCode (ReturnA l) = const l <$> returnA_exp @ S
+    toHaskellCode (Arr l n p bs e) =
+      App l arr_exp (times n (Paren def . App def first_exp) body)
       where
         body :: Exp S
         body = Lambda def [getLoc <$> p] (foldr addBinding (getLoc <$> e) bs)

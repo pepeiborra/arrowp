@@ -19,8 +19,8 @@ import           Language.Haskell.Exts.Observe ()
 
 -- | AST annotations to extend the Haskell AST with an arrow core language
 data Code
-  = ReturnCode
-  | ArrCode Int [Binding]
+  = ReturnCode S
+  | ArrCode S Int [Binding]
   | ComposeCode
   | OpCode
   | Loc S
@@ -35,8 +35,8 @@ getLoc :: Code -> S
 getLoc (Loc s) = s
 getLoc other   = error $ "getLoc: " ++ show other
 
-pattern ReturnA = ExprHole ReturnCode
-pattern Arr i pat bb e = Lambda (ArrCode i bb) [pat] e
+pattern ReturnA l = ExprHole (ReturnCode l)
+pattern Arr l i pat bb e = Lambda (ArrCode l i bb) [pat] e
 pattern Compose a bb c <- List ComposeCode ( split -> (a,bb,c) )
   where
     Compose a bb c = List ComposeCode (a : bb ++ [c])
