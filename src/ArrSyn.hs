@@ -11,9 +11,12 @@ module ArrSyn
   ) where
 
 import           ArrCode
+import           NewCode
 import           Utils
 
 import           Control.Monad.Trans.State
+import           Control.Monad.Trans.Writer
+import           Data.Generics.Uniplate.Data
 import           Data.List                  (mapAccumL)
 import           Data.Map                   (Map)
 import qualified Data.Map                   as Map
@@ -77,9 +80,20 @@ transCmd' s p (H.If l e c1 c2)
       arr 0 (input s) p (H.If l e (left e1) (right e2)) >>> (a1 ||| a2)
       where   (e1, a1) = transTrimCmd s c1
               (e2, a2) = transTrimCmd s c2
-transCmd' s p (H.Case l e as) =
+transCmd' s p (H.Case l e as)
+  | Set.null (freeVars e `Set.intersection` locals s) =
+    Arrow {
+      context = ctx,
+      anonArgs = 0,
+      code = H.Case (Loc l) (Loc <$> e) alts
+          }
+  | otherwise =
    arr 0 (input s) p (H.Case l e as') >>> foldr1 (|||) (reverse cases)
   where
+    (alts, ctx) = runWriter $ flip traverseAlts (Loc <$$> as) $ \exp -> do
+      let arrow = transCmd s p (getLoc <$> exp)
+      tell $ context arrow
+      return $ code arrow
     (as', (ncases, cases)) = runState (mapM (transAlt s) as) (0, [])
     transAlt = observeSt "transAlt" transAlt'
     transAlt' s (Alt loc p gas decls) = do

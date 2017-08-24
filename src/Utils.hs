@@ -30,10 +30,13 @@ module Utils
   , returnCmd
   , observeSt
   , (<$$>)
+  , traverseAlt
+  , traverseAlts
   )where
 
 import           Control.Monad
 import           Control.Monad.Trans.State
+import           Data.Data
 import           Data.Default
 import           Data.Functor.Identity
 import           Data.Generics.Uniplate.Data
@@ -205,3 +208,8 @@ bracket = between "[" "]"
 
 (<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 (<$$>) f = fmap (fmap f)
+
+traverseAlt :: (Data s, Monad a) => (Exp s -> a(Exp s)) -> Alt s -> a(Alt s)
+traverseAlt = descendBiM
+traverseAlts :: (Data s, Monad a) => (Exp s -> a(Exp s)) -> [Alt s] -> a [Alt s]
+traverseAlts = traverse.traverseAlt

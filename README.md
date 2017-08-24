@@ -52,7 +52,7 @@ Comparison with **arrowp**
 **arrowp-qq** extends the original **arrowp** in three dimensions:
 1. It replaces the `haskell-src` based parser with one based on `haskell-src-exts`, which handles most of GHC 8.0.2 Haskell syntax.
 2. It provides not only a preprocessor but also a quasiquoter, which is a better option in certain cases.
-3. It extends the desugaring to handle static conditional expressions (currently only if-then-else). Example:
+3. It extends the desugaring to handle static conditional expressions. Example:
 ```
 proc inputs -> do
   results <- processor -< inputs

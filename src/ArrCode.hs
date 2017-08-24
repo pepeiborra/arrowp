@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveFunctor        #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleContexts     #-}
@@ -9,7 +10,7 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 module ArrCode
-  ( Arrow
+  ( Arrow(..)
   , bind
   , anon
   , arr
@@ -159,27 +160,36 @@ toHaskell = rebracket1 . toHaskellCode . code
       App def arr_exp (times n (Paren def . App def first_exp) body)
       where
         body :: Exp S
-        body = Lambda def [getS <$> p] (foldr addBinding (getS <$> e) bs)
+        body = Lambda def [getLoc <$> p] (foldr addBinding (getLoc <$> e) bs)
         addBinding :: Binding -> Exp S -> Exp S
-        addBinding (BindLet ds) e = H.Let def (getS <$> ds) e
+        addBinding (BindLet ds) e = H.Let def (getLoc <$> ds) e
         addBinding (BindCase p e) e' =
-          Case def (getS <$> e) [Alt def (getS <$> p) (UnGuardedRhs def e') Nothing]
+          Case def (getLoc <$> e) [Alt def (getLoc <$> p) (UnGuardedRhs def e') Nothing]
     toHaskellCode (Compose f as g) =
       foldr (comp . toHaskellArg) (toHaskellArg g) (f : as)
       where
         comp f = InfixApp def f compose_op
     toHaskellCode (Op op as) =
-      foldl (App def) (getS <$> op) (map (Paren def . toHaskellCode) as)
+      foldl (App def) (getLoc <$> op) (map (Paren def . toHaskellCode) as)
     toHaskellCode (InfixApp (Loc l) a1 op a2) =
-      InfixApp l (toHaskellArg a1) (getS <$> op) (toHaskellArg a2)
+      InfixApp l (toHaskellArg a1) (getLoc <$> op) (toHaskellArg a2)
     toHaskellCode (Let (Loc l) bb a) =
-      H.Let l (getS <$> bb) (toHaskellCode a)
+      H.Let l (getLoc <$> bb) (toHaskellCode a)
     toHaskellCode (If (Loc l) cond th el) =
-      If l (getS <$> cond) (toHaskellCode th) (toHaskellCode el)
+      If l (getLoc <$> cond) (toHaskellCode th) (toHaskellCode el)
+    toHaskellCode (Case (Loc l) e alts) =
+      Case l (getLoc <$> e) (toHaskellAlt <$> alts)
+    toHaskellAlt (Alt (Loc l) pat rhs binds) =
+      Alt l (getLoc <$> pat) (toHaskellRhs rhs) (getLoc <$$> binds)
+    toHaskellRhs (UnGuardedRhs (Loc l) e) = UnGuardedRhs l (toHaskellCode e)
+    toHaskellRhs (GuardedRhss (Loc l) rhss) =
+      GuardedRhss l (toHaskellGuardedRhs <$> rhss)
+    toHaskellGuardedRhs (GuardedRhs (Loc l) stmts e) =
+      GuardedRhs l (getLoc <$$> stmts) (toHaskellCode e)
     toHaskellArg = Paren def . toHaskellCode
 
 newtype Tuple = Tuple (Set (Name S))
-  deriving (Eq,Generic,Show)
+  deriving (Eq,Generic,Monoid,Show)
 instance Observable Tuple
 
 instance Located Tuple where

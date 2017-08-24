@@ -17,6 +17,7 @@ import           SrcLocs
 import           Language.Haskell.Exts.Observe ()
 #endif
 
+-- | AST annotations to extend the Haskell AST with an arrow core language
 data Code
   = ReturnCode
   | ArrCode Int [Binding]
@@ -30,9 +31,9 @@ instance Default Code where
 
 instance Observable Code
 
-getS :: Code -> S
-getS (Loc s) = s
-getS other   = error $ "getS: " ++ show other
+getLoc :: Code -> S
+getLoc (Loc s) = s
+getLoc other   = error $ "getLoc: " ++ show other
 
 pattern ReturnA = ExprHole ReturnCode
 pattern Arr i pat bb e = Lambda (ArrCode i bb) [pat] e
