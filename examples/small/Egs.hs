@@ -18,3 +18,9 @@ while p s = proc x -> do
 				while p s -< x
 			else
 				returnA -< ()
+
+rightApp f = proc x -> do
+  y <- x >- f
+  () >- returnA
+  not y >- returnA
+

@@ -64,8 +64,10 @@ transCmd' s p (H.LeftArrApp _ f e)
       | otherwise =
               arr 0 (input s) p (pair f e) >>> app
 transCmd' s p (H.LeftArrHighApp  l f e) = transCmd s p (H.LeftArrApp l f e)
-transCmd' s p (H.RightArrApp     l f e) = transCmd s p (H.LeftArrApp l e f)
-transCmd' s p (H.RightArrHighApp l f e) = transCmd s p (H.LeftArrHighApp l e f)
+transCmd' _ _ H.RightArrApp{} =
+  error "assumption failed: Right arrow applications should have been desugared to left arrow applications before this point"
+transCmd' _ _ H.RightArrHighApp{} =
+  error "assumption failed: Right arrow applications should have been desugared to left arrow applications before this point"
 transCmd' s p (H.InfixApp _ c1 op c2) =
   infixOp (transCmd s p c1) op (transCmd s p c2)
 transCmd' s p (H.Let _ decls c) =

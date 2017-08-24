@@ -20,4 +20,6 @@ translateModule = transformBi translateExp
 translateExp :: Exp SrcSpanInfo -> Exp SrcSpanInfo
 translateExp (Proc _ pat exp) =
   getSrcSpanInfo <$> ArrSyn.translate (fmap S pat) (fmap S exp)
+translateExp (RightArrApp l e f) = LeftArrApp l f e
+translateExp (RightArrHighApp l e f) = LeftArrHighApp l f e
 translateExp other = other
