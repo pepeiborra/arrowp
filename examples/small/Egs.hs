@@ -24,3 +24,7 @@ rightApp f = proc x -> do
   () >- returnA
   not y >- returnA
 
+identity f = proc x -> do
+  y <- f -< x
+  y' <- id -< y
+  returnA -< y
