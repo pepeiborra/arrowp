@@ -21,8 +21,6 @@ module ArrCode
   , infixOp
   , (|||)
   , first
-  , context
-  , anonArgs
   , toHaskell
   , Tuple(..)
   , isEmptyTuple
