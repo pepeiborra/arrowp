@@ -1,3 +1,5 @@
+# 0.2.1.1 (25-08-2017)
+  * Switch to hse-util 0.2.0
 # 0.2.1 (24-08-2017)
   * Add support for static case expressions.
 # 0.2.0.1 (21-08-2017)
