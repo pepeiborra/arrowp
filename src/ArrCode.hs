@@ -173,13 +173,17 @@ toHaskell = rebracket1 . toHaskellCode . code
       If l (getLoc <$> cond) (toHaskellCode th) (toHaskellCode el)
     toHaskellCode (Case (Loc l) e alts) =
       Case l (getLoc <$> e) (toHaskellAlt <$> alts)
+    toHaskellCode other = error $ "toHaskellCode: " ++ show other
     toHaskellAlt (Alt (Loc l) pat rhs binds) =
       Alt l (getLoc <$> pat) (toHaskellRhs rhs) (getLoc <$$> binds)
+    toHaskellAlt other = error $ "toHaskellAlt: " ++ show other
     toHaskellRhs (UnGuardedRhs (Loc l) e) = UnGuardedRhs l (toHaskellCode e)
     toHaskellRhs (GuardedRhss (Loc l) rhss) =
       GuardedRhss l (toHaskellGuardedRhs <$> rhss)
+    toHaskellRhs other = error $ "toHaskellRhs: " ++ show other
     toHaskellGuardedRhs (GuardedRhs (Loc l) stmts e) =
       GuardedRhs l (getLoc <$$> stmts) (toHaskellCode e)
+    toHaskellGuardedRhs other = error $ "toHaskellGuardedRhs: " ++ show other
     toHaskellArg = Paren def . toHaskellCode
 
 newtype Tuple = Tuple (Set (Name ()))
