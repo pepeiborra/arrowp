@@ -16,6 +16,6 @@ static use abc abd adc = proc b -> do
      else returnA -< c -- :: a (b,c) c
   returnA -< res
 
-simple :: Bool -> a b c -> a b c
+simple :: (Arrow a) => Bool -> a b c -> a b c
 simple use abc = proc b -> do
   if use then abc -< b else abc -< b
