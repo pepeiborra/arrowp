@@ -141,7 +141,10 @@ transCmd' s p (H.Lambda _ ps c) =
   anon (length ps) $ bind (definedVars ps) $ transCmd s' (foldl pairP p ps') c
   where
     (s', ps') = addVars' s ps
-transCmd' _ _ x = error $ "transCmd: " ++ show x
+transCmd' _ _ x = error $ "Invalid parse: " ++ showSrcLoc (H.fromSrcInfo $ getSrcSpanInfo $ ann x)
+ where
+  showSrcLoc :: H.SrcLoc -> String
+  showSrcLoc (H.SrcLoc file line col) = file ++ ":" ++ show line ++ ":" ++ show col
 
 -- transCmd' s p (CmdVar n) =
 --       arr (anonArgs a) (input s) p e >>> arrowExp (H.Var () (H.UnQual () n))
