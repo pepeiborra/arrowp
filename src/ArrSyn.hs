@@ -16,6 +16,7 @@ import           Utils
 
 import           Control.Monad.Trans.State
 import           Control.Monad.Trans.Writer
+import           Data.Default
 import           Data.List                  (mapAccumL)
 import           Data.Map                   (Map)
 import qualified Data.Map                   as Map
@@ -201,12 +202,12 @@ transDo' s p (RecStmt l rss:ss) c =
            p
            rss'
            (returnCmd
-              (foldr (pair . H.Var l . H.UnQual l) output (Set.toList defined)))) `intersectTuple`
+              (foldr (pair . H.Var l . H.UnQual l) output (const def <$$> Set.toList defined)))) `intersectTuple`
       defined
 
 data TransState = TransState {
-      locals  :: Set (Name S),   -- vars in scope defined in this proc
-      cmdVars :: Map (Name S) Arrow
+      locals  :: Set (Name ()),   -- vars in scope defined in this proc
+      cmdVars :: Map (Name ()) Arrow
   } deriving (Eq, Generic, Show)
 
 instance Observable TransState
@@ -215,7 +216,7 @@ input :: TransState -> Tuple
 input s = Tuple (locals s)
 
 addVars'
-  :: (Observable a, AddVars a, Eq l, Show l, l ~ LocType a)
+  :: (Observable a, AddVars a)
   => TransState -> a -> (TransState, a)
 addVars' = observe "addVars" addVars
 

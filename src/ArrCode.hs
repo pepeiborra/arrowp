@@ -47,11 +47,6 @@ data Arrow = Arrow
   }
   deriving (Eq, Generic, Show)
 
-instance Located Arrow  where
-  type LocType Arrow = Code
-  location f (Arrow context anon code)=
-    Arrow context anon <$> location f code
-
 instance Observable Arrow
 
 loop :: Arrow -> Arrow
@@ -60,7 +55,7 @@ loop f = applyOp loop_exp [f]
 app :: Arrow
 app = arrowExp app_exp
 
-bind :: Set (Name S) -> Arrow -> Arrow
+bind :: Set (Name ()) -> Arrow -> Arrow
 bind = observe "bind" $ \vars a -> a {context = context a `minusTuple` vars}
 anon :: Int -> Arrow -> Arrow
 anon anonCount a = a {anonArgs = anonArgs a + anonCount}
@@ -140,7 +135,7 @@ compose = observe "compose" compose'
 compose' :: Exp Code -> Exp Code -> Exp Code
 compose' ReturnA{} a = a
 compose' a ReturnA{} = a
-compose' a1@(Arr l1 n1 p1 ds1 e1) a2@(Arr l2 n2 p2 ds2 e2)
+compose' a1@(Arr l1 n1 p1 ds1 e1) a2@(Arr _l2 n2 p2 ds2 e2)
   | n1 /= n2 = Compose a1 [] a2 -- could do better, but can this arise?
   | same p2 e1 = Arr l1 n1 p1 (ds1 ++ ds2) e2
   | otherwise = Arr l1 n1 p1 (ds1 ++ BindCase p2 e1 : ds2) e2
@@ -187,35 +182,33 @@ toHaskell = rebracket1 . toHaskellCode . code
       GuardedRhs l (getLoc <$$> stmts) (toHaskellCode e)
     toHaskellArg = Paren def . toHaskellCode
 
-newtype Tuple = Tuple (Set (Name S))
+newtype Tuple = Tuple (Set (Name ()))
   deriving (Eq,Generic,Monoid,Show)
 instance Observable Tuple
-
-instance Located Tuple where
-  type LocType Tuple = S
-  location f (Tuple names) = Tuple <$> location f names
 
 isEmptyTuple :: Tuple -> Bool
 isEmptyTuple (Tuple t) = Set.null t
 
 patternTuple :: Tuple -> Pat S
 patternTuple (Tuple [])  = PApp def (unit_con_name def) []
-patternTuple (Tuple [x]) = PVar def x
-patternTuple (Tuple t)   = PTuple def Boxed (map (PVar def) (Set.toList t))
+patternTuple (Tuple [x]) = PVar def (const def <$> x)
+patternTuple (Tuple t) =
+  PTuple def Boxed (map (PVar def) (const def <$$> Set.toList t))
 
 expTuple :: Tuple -> Exp S
 expTuple (Tuple [])  = unit_con def
-expTuple (Tuple [t]) = Var def $ UnQual def t
-expTuple (Tuple t)   = H.Tuple def Boxed (map (Var def . UnQual def) (Set.toList t))
+expTuple (Tuple [t]) = Var def $ UnQual def (const def <$> t)
+expTuple (Tuple t) =
+  H.Tuple def Boxed (map (Var def . UnQual def) (const def <$$> Set.toList t))
 
 emptyTuple :: Tuple
 emptyTuple = Tuple Set.empty
 unionTuple :: Tuple -> Tuple -> Tuple
 unionTuple (Tuple a) (Tuple b) = Tuple (a `Set.union` b)
 
-minusTuple :: Tuple -> Set (Name S) -> Tuple
+minusTuple :: Tuple -> Set (Name ()) -> Tuple
 Tuple t `minusTuple` vs = Tuple (t `Set.difference` vs)
-intersectTuple :: Tuple -> Set (Name S) -> Tuple
+intersectTuple :: Tuple -> Set (Name ()) -> Tuple
 intersectTuple = observe "intersectTuple" intersectTuple'
-intersectTuple' :: Tuple -> Set (Name S) -> Tuple
+intersectTuple' :: Tuple -> Set (Name ()) -> Tuple
 Tuple t `intersectTuple'` vs = Tuple (t `Set.intersection` vs)

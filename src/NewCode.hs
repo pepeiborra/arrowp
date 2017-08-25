@@ -11,7 +11,6 @@ import           Data.Default
 import           Debug.Hoed.Pure
 import           GHC.Generics                  (Generic)
 import           Language.Haskell.Exts.Syntax
-import           Language.Haskell.Exts.Util
 import           SrcLocs
 #ifdef DEBUG
 import           Language.Haskell.Exts.Observe ()
@@ -51,8 +50,3 @@ data Binding = BindLet (Binds Code) | BindCase (Pat Code) (Exp Code)
   deriving (Eq, Data, Ord, Generic, Show)
 
 instance Observable Binding
-
-instance Located Binding where
-  type LocType Binding = Code
-  location f (BindLet b)    = BindLet <$> location f b
-  location f (BindCase p e) = BindCase <$> location f p <*> location f e

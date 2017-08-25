@@ -8,8 +8,7 @@
 {-# LANGUAGE TypeFamilies        #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -Wno-orphans #-}
 module Utils
-  ( HSE.Located(..)
-  , S(..)
+  ( S(..)
   , HSE.rebracket1
   , freeVars
   , freeVarss
@@ -55,29 +54,23 @@ import NewCode
 
 freeVars
   :: ( Observable a
-     , Observable (Set (Name code))
      , HSE.FreeVars a
-     , code ~ HSE.LocType a
      )
-  => a -> Set (Name code)
+  => a -> Set (Name ())
 freeVars = observe "freeVars" HSE.freeVars
 
 freeVarss
   :: ( Observable a
-     , Observable (Set (Name code))
      , HSE.AllVars a
-     , code ~ HSE.LocType a
      )
-  => a -> Set (Name code)
+  => a -> Set (Name ())
 freeVarss = observe "freeVarss" (HSE.free . HSE.allVars)
 
 definedVars
   :: ( Observable a
-     , Observable (Set (Name code))
      , HSE.AllVars a
-     , code ~ HSE.LocType a
      )
-  => a -> Set (Name code)
+  => a -> Set (Name ())
 definedVars = observe "definedVars" (HSE.bound . HSE.allVars)
 
 -- | Are a tuple pattern and an expression tuple equal ?
@@ -103,13 +96,13 @@ times :: Int -> (a -> a) -> a -> a
 times n f x = iterate f x !! n
 
 -- | Hide variables from a pattern
-hidePat :: Set (Name S) -> Pat S -> Pat S
+hidePat :: Set (Name ()) -> Pat S -> Pat S
 hidePat vs = transform (go vs) where
   go vs p@(PVar l n)
-    | n `Set.member` vs = PWildCard l
+    | void n `Set.member` vs = PWildCard l
     | otherwise = p
   go vs (PAsPat _ n p)
-    | n `Set.member` vs = go vs p
+    | void n `Set.member` vs = go vs p
   go _ x = x
 
 pair :: Exp code -> Exp code -> Exp code
@@ -213,3 +206,4 @@ traverseAlt :: (Data s, Monad a) => (Exp s -> a(Exp s)) -> Alt s -> a(Alt s)
 traverseAlt = descendBiM
 traverseAlts :: (Data s, Monad a) => (Exp s -> a(Exp s)) -> [Alt s] -> a [Alt s]
 traverseAlts = traverse.traverseAlt
+
