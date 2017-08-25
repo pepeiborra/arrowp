@@ -7,7 +7,7 @@ extra-deps:
 - arrows-0.4.4.1
 - Stream-0.4.7.2
 - lazysmallcheck-0.6
-- haskell-src-exts-util-0.1.0
+- haskell-src-exts-util-0.2.0
 
 packages:
 - .

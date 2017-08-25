@@ -7,7 +7,7 @@ extra-deps:
 - RBTree-0.0.5
 - libgraph-1.12
 - haskell-src-exts-observe-0.1.0
-- haskell-src-exts-util-0.1.0
+- haskell-src-exts-util-0.2.0
 
 packages:
 - .
