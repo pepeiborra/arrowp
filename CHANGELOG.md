@@ -1,3 +1,5 @@
+# 0.2.2 (25-08-2017)
+  * Expose a quasi quoter that accepts a 'ParseMode' (fixity, extensions, etc.) 
 # 0.2.1.1 (25-08-2017)
   * Switch to hse-util 0.2.0
 # 0.2.1 (24-08-2017)
