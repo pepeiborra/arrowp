@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Control.Arrow.QuasiQuoter
   ( proc
+  , procEx
   ) where
 
 import Control.Arrow.Notation
@@ -23,15 +24,15 @@ import Text.Printf
 --   @
 
 proc :: QuasiQuoter
-proc = QuasiQuoter
-  { quoteExp  = quote
+proc = procEx defaultParseMode{extensions = defaultExtensions}
+
+procEx :: ParseMode -> QuasiQuoter
+procEx parseMode = QuasiQuoter
+  { quoteExp  = quoteEx parseMode
   , quotePat  = error "proc: pattern quotes not supported"
   , quoteType = error "proc: type quotes not supported"
   , quoteDec  = error "proc: dec quotes not supported"
   }
-
-quote :: String -> Q Exp
-quote = quoteEx defaultParseMode { extensions = defaultExtensions }
 
 quoteEx :: ParseMode -> String -> Q Exp
 quoteEx mode inp =
