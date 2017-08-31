@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedLists     #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -Wno-orphans #-}
@@ -14,6 +15,7 @@ module Utils
   , freeVarss
   , definedVars
   , irrPat
+  , trimPat
   , left, right
   , pair
   , pairP
@@ -44,13 +46,14 @@ import           Data.Map                      (Map)
 import           Data.Set                      (Set)
 import qualified Data.Set                      as Set
 import           Debug.Hoed.Pure               hiding (Module)
+import           Debug.Hoed.Pure.TH
 import           Language.Haskell.Exts
 import qualified Language.Haskell.Exts.Util    as HSE
 #ifdef DEBUG
 import           Language.Haskell.Exts.Observe ()
 #endif
-import SrcLocs
-import NewCode
+import           NewCode
+import           SrcLocs
 
 freeVars
   :: ( Observable a
@@ -95,15 +98,24 @@ same' _ _ = False
 times :: Int -> (a -> a) -> a -> a
 times n f x = iterate f x !! n
 
+-- | Hide variables that don't satisfy a predicate
+filterPat :: (Data a) => (Name a -> Bool) -> Pat a -> Pat a
+filterPat pred = transform go where
+  go p@(PVar l n)
+    | pred n = p
+    | otherwise = PWildCard l
+  go (PAsPat _ n p)
+    | not(pred n) = go p
+  go x = x
+
 -- | Hide variables from a pattern
-hidePat :: Set (Name ()) -> Pat S -> Pat S
-hidePat vs = transform (go vs) where
-  go vs p@(PVar l n)
-    | void n `Set.member` vs = PWildCard l
-    | otherwise = p
-  go vs (PAsPat _ n p)
-    | void n `Set.member` vs = go vs p
-  go _ x = x
+hidePat :: Data a => Set (Name ()) -> Pat a -> Pat a
+hidePat vs = filterPat (not . (`Set.member` vs) . void)
+
+obs [d|
+  trimPat :: Exp S -> Pat S -> Pat S
+  trimPat vs = filterPat ((`Set.member` freeVars vs) . void)
+    |]
 
 pair :: Exp code -> Exp code -> Exp code
 pair e1 e2 = Tuple (ann e1) Boxed [e1, e2]
@@ -168,6 +180,8 @@ instance (Eq a, Eq k, Show a, Show k) => Observable (Map k a) where
 -- Override some AST instances for comprehension
 instance {-# OVERLAPS #-} Observable (Exp Code) where
   observer = observePretty
+instance {-# OVERLAPS #-} Observable (Exp S) where
+  observer = observePretty
 instance {-# OVERLAPS #-} Observable (Name S) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (QName S) where
@@ -179,6 +193,8 @@ instance {-# OVERLAPS #-} Observable (Stmt S) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (Pat Code) where
   observer = observePretty
+instance {-# OVERLAPS #-} Observable (Pat S) where
+  observer = observePretty
 instance {-# OVERLAPS #-} Observable (QOp S) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (Op S) where
@@ -188,6 +204,10 @@ instance {-# OVERLAPS #-} Observable (Rhs S) where
 instance {-# OVERLAPS #-} Observable (Alt S) where
   observer = observePretty
 instance {-# OVERLAPS #-} Observable (Set (Name S)) where
+  constrain = constrainBase
+  observer x cxt =
+    seq x $ send (between "[" "]"$ intercalate "," $ prettyPrint <$> map void (Set.toList x)) (return x) cxt
+instance {-# OVERLAPS #-} Observable (Set (Name ())) where
   constrain = constrainBase
   observer x cxt =
     seq x $ send (between "[" "]"$ intercalate "," $ prettyPrint <$> map void (Set.toList x)) (return x) cxt

@@ -40,10 +40,10 @@ Library
                    transformers,
                    uniplate
     if flag(Debug)
-       Build-Depends:       Hoed, haskell-src-exts-observe
+       Build-Depends:       Hoed > 0.3.6, haskell-src-exts-observe
        cpp-options:         -DDEBUG
     else
-       Build-Depends:       NoHoed
+       Build-Depends:       NoHoed >= 0.1.1
 
     Hs-Source-Dirs: src
     Other-Modules:  ArrCode ArrSyn NewCode SrcLocs Utils
