@@ -1,11 +1,9 @@
 flags: {}
 extra-package-dbs: []
-extra-deps:
-- NoHoed-0.1.0
-- haskell-src-exts-util-0.2.0
+extra-deps: []
 packages:
 - .
 
-resolver: nightly-2017-08-17
+resolver: nightly-2017-08-30
 ghc-options:
   "*": -Wall

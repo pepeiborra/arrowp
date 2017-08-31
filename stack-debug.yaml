@@ -7,7 +7,6 @@ extra-deps:
 - RBTree-0.0.5
 - libgraph-1.12
 - haskell-src-exts-observe-0.1.0
-- haskell-src-exts-util-0.2.0
 
 packages:
 - .
@@ -20,6 +19,6 @@ packages:
     commit: c7c17070a0e5f5931fcdaa60283533ae5276d9ff
   extra-dep: true
 
-resolver: lts-9.0
+resolver: nightly-2017-08-30
 ghc-options:
   "*": -Wall
