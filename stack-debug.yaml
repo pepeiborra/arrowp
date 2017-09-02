@@ -12,13 +12,13 @@ packages:
 - .
 - location: 
     git: https://github.com/MaartenFaddegon/Hoed.git
-    commit: a90b8ae15fdee2fcbf1a3da4d65a71050a7ca097
+    commit: HEAD
   extra-dep: true
 - location:
     git: https://github.com/MaartenFaddegon/libgraph.git
     commit: c7c17070a0e5f5931fcdaa60283533ae5276d9ff
   extra-dep: true
 
-resolver: nightly-2017-08-30
+resolver: nightly-2017-09-02
 ghc-options:
   "*": -Wall
