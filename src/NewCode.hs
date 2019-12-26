@@ -34,7 +34,7 @@ getLoc :: Code -> S
 getLoc (Loc s) = s
 getLoc other   = error $ "getLoc: " ++ show other
 
-pattern ReturnA l = ExprHole (ReturnCode l)
+pattern ReturnA l = Var OpCode (Special OpCode (ExprHole (ReturnCode l)))
 pattern Arr l i pat bb e = Lambda (ArrCode l i bb) [pat] e
 pattern Compose a bb c <- List ComposeCode ( split -> (a,bb,c) )
   where

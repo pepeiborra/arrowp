@@ -187,7 +187,7 @@ toHaskell = rebracket1 . toHaskellCode . code
     toHaskellArg = Paren def . toHaskellCode
 
 newtype Tuple = Tuple (Set (Name ()))
-  deriving (Eq,Generic,Monoid,Show)
+  deriving (Eq,Generic,Semigroup,Monoid,Show)
 instance Observable Tuple
 
 isEmptyTuple :: Tuple -> Bool

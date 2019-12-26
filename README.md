@@ -7,6 +7,8 @@ Arrowp-qq
 A preprocessor for arrow notation 
 based on the arrowp preprocessor developed by Ross Paterson <ross@soi.city.ac.uk>.
 
+Forked from Jose Iborra's arrowp-qq preprocessor, updating package version constraints and fixing resulting code breakage. It should now build under Cabal v3.
+
 Notable features include support for GHC Haskell syntax and a
 quasiquoter that can be used instead of the preprocessor.
 
