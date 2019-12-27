@@ -70,7 +70,7 @@ This can be useful for preserving compatibility with vanilla `proc` notation, at
 Desugaring Semantics
 -----------------------
 ### Static conditional expression optimization
-As mentioned previously, `arrowp-qq` extends the `arrowp`'s desugaring to handle static conditional expressions. Given:
+As mentioned previously, `arrowp-qq` extends the original `arrowp`'s desugaring to handle static conditional expressions. Given:
 ```
 proc inputs -> do
   results <- processor -< inputs
