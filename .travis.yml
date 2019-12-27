@@ -1,5 +1,10 @@
 language: haskell
-cabal: "3.0"
+cabal: '3.0'
 ghc:
-  - "8.6.5"
-  - "8.8.1"
+- 8.6.5
+- 8.8.1
+deploy:
+  provider: hackage
+  username: riuga
+  password:
+    secure: hEx3w4JDGvaCvFABtYWj4/px/y0Mm4a+vel419cCjL+UKP1GXdr3KkfQHPQ+hb8rbT5bXAUBC/djnTkHd5/BryBPjHMMzZG3uaJ075qzZKpn7OaiZNdHKqX+NxLTcyAToI4QBjkaLgwFF8k3t7GkI1Z2lSYIWwDmAwSVHghvps9TDy8Y2YYzCwnXGAdUBT0zC78VFUPxJwc9vSrzby4gOCPFjf80+l4ClZJpP9SiyXHZl1FfqmfSLeERF05/LQuZBp/W46dzQOT33ZMig0H4cxuydCGbA9lR5q5lHdfAI1dBsat8TpbJ0HKb0r5nXZgXj5VhqgVmAHwnyWdrCGBMDzCYFnQUw6MO6i5kZWkf5DqFKpd3nNS0jjLmPqdc/Y6rkRMY7NFub2Nh1zvEBCHYhIBqDIcmi2ld7p7E5Ej3sa3RuSMuvLFlQpvp9wYt1h/mNupXzetTxyCBuLdebCwDWi9rAoE9d2Nfyh/w+ReKYbJNOovAWxjeLpHRVN1k+sHxL6H1GvQZv6HmjU/4UbWEqWyzdUREkoMz8Ojxder5vGUqOf/PlXo47NCFvp0nkiaBf/fmK3OOgWuLA3mPK2Wu0c/mSUTp6jVP1qzsfyp2q7GHdiyiZBIsGb2gxYVPyxrQlA7vSQLSD3PEbqcNX81b13UltFtTsa+5EwX2hjt6YHc=
