@@ -28,8 +28,7 @@ Limitations
 
 The parser cannot handle banana brackets for
 control operators in arrow notation (the **proc** keyword in the original paper), 
-due to a 
-[limitation](https://github.com/haskell-suite/haskell-src-exts/issues/45) 
+due to a [limitation](https://github.com/haskell-suite/haskell-src-exts/issues/45) 
 in `haskell-src-exts`. In order to use banana brackets, the recommendation
 is to fall back to the GHC Arrows parser.
 

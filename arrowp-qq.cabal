@@ -1,11 +1,11 @@
 Name:           arrowp-qq
 Version:        0.3.0
-Cabal-Version:  >= 1.20
+Cabal-Version:  >= 2.0
 Build-Type:     Simple
 License:        GPL
 License-File:   LICENCE
 Author:         Jose Iborra <pepeiborra@gmail.com>
-Maintainer:     John 'Ski <N/A>
+Maintainer:     John 'Ski <riuga@tuta.io>
 Homepage:       https://github.com/pepeiborra/arrowp
 Category:       Development
 Synopsis:       A preprocessor and quasiquoter for translating arrow notation
@@ -30,15 +30,16 @@ Library
     Exposed-Modules:     
                          Control.Arrow.Notation,
                          Control.Arrow.QuasiQuoter
-    Build-Depends: base < 5,
-                   containers,
-                   data-default,
-                   haskell-src-exts,
-                   haskell-src-exts-util >= 0.2.0,
-                   haskell-src-meta,
-                   template-haskell, 
-                   transformers,
-                   uniplate
+    Build-Depends: base                   >= 4.7 && < 5,
+                   NoHoed                 >= 0.1.1 && < 0.2,
+                   template-haskell       >= 2.14.0 && < 2.15,
+                   containers             >= 0.6.0 && < 0.7,
+                   data-default           >= 0.7.1 && < 0.8,
+                   haskell-src-exts       >= 1.22.0 && < 1.23,
+                   transformers           >= 0.5.6 && < 0.6,
+                   haskell-src-exts-util  >= 0.2.5 && < 0.3,
+                   uniplate               >= 1.6.12 && < 1.7,
+                   haskell-src-meta       >= 0.8.5 && < 0.9
     if flag(Debug)
        Build-Depends:       Hoed > 0.3.6, haskell-src-exts-observe
        cpp-options:         -DDEBUG
@@ -55,9 +56,7 @@ executable arrowp
   hs-source-dirs:
       app
   build-depends:
-                base >= 4.7 && < 5, 
-                arrowp-qq,
-                haskell-src-exts
+      base, haskell-src-exts, arrowp-qq
   if flag(Debug)
       Build-Depends:       Hoed
       cpp-options:         -DDEBUG
