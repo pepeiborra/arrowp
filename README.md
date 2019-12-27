@@ -46,8 +46,8 @@ Installation
 Usage 
 -----
 
-# Optimization
-# # Via the `proc` quasiquoter
+### Optimization
+### ### Via the `proc` quasiquoter
 
 ```
 addA :: Arrow a => a b Int -> a b Int -> a b Int
@@ -57,16 +57,16 @@ addA f g = [proc| x -> do
 		returnA -< y + z |]
 ```
 
-# Via the **arrowp** preprocessor
+### Via the **arrowp** preprocessor
 Add the following GHC pragma to the top of the source file:
 ```
-{-#  OPTIONS -F -pgmF arrowp # -}
+{-###  OPTIONS -F -pgmF arrowp ### -}
 ```
 This can be useful for preserving compatibility with vanilla `proc` notation, at the cost of flexibility; that is to say, all `proc` blocks within the source file will be desugared via `arrowp-qq`.
 
 Desugaring Semantics
 -----------------------
-# Static conditional expression optimization
+### Static conditional expression optimization
 As mentioned previously, `arrowp-qq` extends the `arrowp`'s desugaring to handle static conditional expressions. Given:
 ```
 proc inputs -> do
@@ -94,7 +94,7 @@ performs the choice at compile time and thus an `Arrow` suffices:
           >>> arr (\ (_, results) -> results)))
 ```
 
-# `first` call optimization
+### `first` call optimization
 The GHC desugarer does not do a very good job of minimizing the number of
 `first` calls inserted. In certain `Arrow` instances, this can have a material effect
 on performance. Example:
