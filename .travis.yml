@@ -1,47 +1,10 @@
-
-# This is the simple Travis configuration, which is intended for use
-# on applications which do not require cross-platform and
-# multiple-GHC-version support. For more information and other
-# options, see:
-#
-# https://docs.haskellstack.org/en/stable/travis_ci/
-#
-# Copy these contents into the root directory of your Github project in a file
-# named .travis.yml
-
-# Use new container infrastructure to enable caching
-sudo: false
-
-# Do not choose a language; we provide our own build tools.
-language: generic
-
-# Caching so the next build will be fast too.
-cache:
-  directories:
-  - $HOME/.stack
-
-# Ensure necessary system libraries are present
-addons:
-  apt:
-    packages:
-      - libgmp-dev
-
-before_install:
-# Download and unpack the stack executable
-- mkdir -p ~/.local/bin
-- export PATH=$HOME/.local/bin:$PATH
-- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-
-install:
-# Build dependencies
-- stack --no-terminal --install-ghc test --only-dependencies
-
-script:
-# Build the package ans install the arrowp-ext preprocessor (needed for tests)
-- stack --no-terminal install --haddock --no-haddock-deps
-
-# Build the package, its tests, and its docs and run the tests
-- STACK_YAML=stack-test.yaml stack --no-terminal test --haddock --no-haddock-deps
-
-# Build the package in debug mode
-- STACK_YAML=stack-debug.yaml stack build
+language: haskell
+cabal: '3.0'
+ghc:
+- 8.6.5
+- 8.8.1
+deploy:
+  provider: hackage
+  username: riuga
+  password:
+    secure: hEx3w4JDGvaCvFABtYWj4/px/y0Mm4a+vel419cCjL+UKP1GXdr3KkfQHPQ+hb8rbT5bXAUBC/djnTkHd5/BryBPjHMMzZG3uaJ075qzZKpn7OaiZNdHKqX+NxLTcyAToI4QBjkaLgwFF8k3t7GkI1Z2lSYIWwDmAwSVHghvps9TDy8Y2YYzCwnXGAdUBT0zC78VFUPxJwc9vSrzby4gOCPFjf80+l4ClZJpP9SiyXHZl1FfqmfSLeERF05/LQuZBp/W46dzQOT33ZMig0H4cxuydCGbA9lR5q5lHdfAI1dBsat8TpbJ0HKb0r5nXZgXj5VhqgVmAHwnyWdrCGBMDzCYFnQUw6MO6i5kZWkf5DqFKpd3nNS0jjLmPqdc/Y6rkRMY7NFub2Nh1zvEBCHYhIBqDIcmi2ld7p7E5Ej3sa3RuSMuvLFlQpvp9wYt1h/mNupXzetTxyCBuLdebCwDWi9rAoE9d2Nfyh/w+ReKYbJNOovAWxjeLpHRVN1k+sHxL6H1GvQZv6HmjU/4UbWEqWyzdUREkoMz8Ojxder5vGUqOf/PlXo47NCFvp0nkiaBf/fmK3OOgWuLA3mPK2Wu0c/mSUTp6jVP1qzsfyp2q7GHdiyiZBIsGb2gxYVPyxrQlA7vSQLSD3PEbqcNX81b13UltFtTsa+5EwX2hjt6YHc=

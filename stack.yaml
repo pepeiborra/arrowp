@@ -1,9 +1,0 @@
-flags: {}
-extra-package-dbs: []
-extra-deps: []
-packages:
-- .
-
-resolver: nightly-2017-09-02
-ghc-options:
-  "*": -Wall
