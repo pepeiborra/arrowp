@@ -45,9 +45,12 @@ Installation
 
 Usage 
 -----
-
+### Viewing desugared `proc` syntax
+```sh
+arrowp myfile.hs | less
+```
 ### Optimization
-### ### Via the `proc` quasiquoter
+#### Via the `proc` quasiquoter
 
 ```
 addA :: Arrow a => a b Int -> a b Int -> a b Int
@@ -57,7 +60,7 @@ addA f g = [proc| x -> do
 		returnA -< y + z |]
 ```
 
-### Via the **arrowp** preprocessor
+#### Via the **arrowp** preprocessor
 Add the following GHC pragma to the top of the source file:
 ```
 {-###  OPTIONS -F -pgmF arrowp ### -}
